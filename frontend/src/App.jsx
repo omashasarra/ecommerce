@@ -1,5 +1,6 @@
-import React from 'react'
-import Navbar from './components/Navbar/Navbar'
+import React from 'react';
+import {BrowserRouter as Router, Routes, Route} from "react-router-dom";
+import Navbar from './components/Navbar/Navbar';
 import Hero from './components/Hero/Hero';
 import Category from './components/Category/category';
 import Category2 from './components/Category/Category2';
@@ -38,7 +39,6 @@ const BannerData2 = {
   title4: "Lorem ipsum dolor sit amet consectetur adipisicing elit.",
   bgColor: "#2dcc6f",
 };
-
 
 const App = () => {
   const [orderPopup, setOrderPopup] = React.useState(false);
