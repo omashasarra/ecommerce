@@ -1,11 +1,9 @@
 import React from 'react';
-import {BrowserRouter as Router, Routes, Route} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from './components/Navbar/Navbar';
-import Hero from './components/Hero/Hero';
 import Category from './components/Category/category';
-import Category2 from './components/Category/Category2';
-import Services from './components/Services/Services';
-import Banner from './components/Banner/Banner';
+import Category2 from './components/Category/category2';
+import Home from './pages/Home.jsx';
 import Partners from './components/Partners/Partners.jsx';
 
 import headphone from "./assets/hero/headphone.png"
@@ -14,8 +12,15 @@ import smartwatch2 from "./assets/category/smartwatch2-removebg-preview.png"
 import Blogs from './components/Blogs/Blogs';
 import Footer from './components/Footer/Footer.jsx';
 import Popup from './components/Popup/Popup.jsx';
+import Services from './components/Services/Services.jsx';
+import Banner from './components/Banner/Banner.jsx';
+
+
+
 import AOS from "aos";
 import "aos/dist/aos.css";
+
+
 
 
 const BannerData = {
@@ -47,7 +52,7 @@ const App = () => {
     setOrderPopup(!orderPopup);
   };
 
-  React.useEffect(() =>{
+  React.useEffect(() => {
     AOS.init(
       {
         duration: 800,
@@ -55,25 +60,50 @@ const App = () => {
         delay: 100,
         offset: 100,
       });
-      AOS.refresh();
+    AOS.refresh();
   }, []);
 
+  function CombineProducts () {
+    return (
+      <div>
+        <Products />
+        <hr />
+        <Services />
+        <hr />
+        <Partners />
+        <hr />
+      </div>
+    )
+  }
+
+  function CombineCategory () {
+    return (
+      <div>
+        <Category />
+        <hr />
+        <Category2 />
+      </div>
+    )
+  }
   return (
     <div className='bg-white dark:bg-gray-900 dark:text-white *:duration-200
     overflow-hidden'>
-      <Navbar handleOrderPopup={handleOrderPopup}/>
-      <Hero handleOrderPopup={handleOrderPopup}/>
-      <Category />
-      <Category2 />
-      <Services />
-      <Banner data = {BannerData}/>
-      <Products />
-      <Banner data = {BannerData2}/>
-      <Blogs />
-      <Partners />
-      <Footer />
-      <Popup orderPopup={orderPopup}
-      handleOrderPopup={handleOrderPopup}/>
+      <Router>
+        <Navbar handleOrderPopup={handleOrderPopup} />
+
+        <Routes>
+          <Route path='/' element={<Home handleOrderPopup={handleOrderPopup} />} />
+          <Route path='/products' element={<CombineProducts handleOrderPopup={handleOrderPopup}/>} />
+          <Route path='/blog' element={<Blogs handleOrderPopup={handleOrderPopup}/>} />
+          <Route path="/about" element={<CombineCategory handleOrderPopup={handleOrderPopup} />} />
+          <Route path='trending' element={<Banner data={BannerData} handleOrderPopup={handleOrderPopup}/>}/>
+          <Route path='best-selling' element={<Banner data={BannerData2} handleOrderPopup={handleOrderPopup}/>}/>
+          <Route path='/top-rated' element={<Products handleOrderPopup={handleOrderPopup}/>} />
+        </Routes>
+
+        <Footer />
+        <Popup orderPopup={orderPopup} handleOrderPopup={handleOrderPopup} />
+      </Router>
     </div>
   )
 }
