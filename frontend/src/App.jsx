@@ -13,8 +13,8 @@ import Blogs from './components/Blogs/Blogs';
 import Footer from './components/Footer/Footer.jsx';
 import Popup from './components/Popup/Popup.jsx';
 import Services from './components/Services/Services.jsx';
-import Banner from './components/Banner/Banner.jsx';
-
+import Banner from './components/Banner/Banner.jsx'; 
+import AdminDashboard from './pages/AdminDashboard.jsx';
 
 
 import AOS from "aos";
@@ -99,6 +99,7 @@ const App = () => {
           <Route path='trending' element={<Banner data={BannerData} handleOrderPopup={handleOrderPopup}/>}/>
           <Route path='best-selling' element={<Banner data={BannerData2} handleOrderPopup={handleOrderPopup}/>}/>
           <Route path='/top-rated' element={<Products handleOrderPopup={handleOrderPopup}/>} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
 
         <Footer />
@@ -108,4 +109,4 @@ const App = () => {
   )
 }
 
-export default App
+export default App;
