@@ -4,17 +4,30 @@ import "swiper/css";
 
 import Button from "./Button";
 
-export default function SliderComponent({ data, handleOrderPopup }) {
+export default function SliderComponent({ data = [], handleOrderPopup }) {
+  const count = data?.length || 0;
+
+  const maxSlidesPerView = 3;
+  const canLoop = count > maxSlidesPerView;
+
   return (
-    <Swiper
-      modules={[Autoplay]}
-      loop
-      speed={800}
-      autoplay={{ delay: 4000, disableOnInteraction: false }}
-      allowTouchMove
-    >
-      {data.map((item) => (
-        <SwiperSlide key={item.id}>
+  <Swiper
+    modules={[Autoplay]}
+    loop={canLoop}
+    speed={800}
+    autoplay={
+      count > 1
+        ? { delay: 4000, disableOnInteraction: false }
+        : false
+    }
+    allowTouchMove={count > 1}
+    watchOverflow
+    slidesPerView={1}      
+    slidesPerGroup={1}     
+  >
+
+      {data.map((item, idx) => (
+        <SwiperSlide key={item._id || item.id || idx}>
           <div className="grid grid-cols-1 sm:grid-cols-2">
             {/* text content */}
             <div className="flex flex-col justify-center gap-4 sm:pl-3 pt-12 sm:pt-0 text-center sm:text-left order-2 sm:order-1">
@@ -52,7 +65,7 @@ export default function SliderComponent({ data, handleOrderPopup }) {
                 data-aos-delay="300"
               >
                 <Button
-                  text="Shop By Category"
+                  text={item.buttonLabel || "Shop By Category"}   
                   bgColor="bg-primary"
                   textColor="text-white"
                   handler={handleOrderPopup}

@@ -11,7 +11,7 @@ import Partners from "../components/Partners/Partners";
 import headphone from "../assets/hero/headphone.png";
 import smartwatch2 from "../assets/category/smartwatch2-removebg-preview.png";
 
-const BannerData = {
+const FALLBACK_1 = {
   discount: "30% OFF",
   title: "Fine Smile",
   date: "10 Jan to 28 Jan",
@@ -22,7 +22,7 @@ const BannerData = {
   bgColor: "#f42c37",
 };
 
-const BannerData2 = {
+const FALLBACK_2 = {
   discount: "30% OFF",
   title: "Happy Hours",
   date: "10 Jan to 28 Jan",
@@ -33,20 +33,59 @@ const BannerData2 = {
   bgColor: "#2dcc6f",
 };
 
-const Home = ({ handleOrderPopup }) => {
+export default function Home({ handleOrderPopup }) {
+  const [b1, setB1] = React.useState(null);
+  const [b2, setB2] = React.useState(null);
+
+  React.useEffect(() => {
+    // Fetch active banners and map positions to component props
+    (async () => {
+      try {
+        const res = await fetch("/api/banners"); // make sure Vite proxy to 5000 exists
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const json = await res.json();
+        const list = Array.isArray(json?.rows) ? json.rows : [];
+
+        const m = new Map(list.map(b => [b.position, b]));
+        const mapBanner = (b) =>
+          b
+            ? {
+                discount: b.discount,
+                title: b.title,
+                date: b.date,
+                image: b.imageUrl || "", // server mapped -> /banner/<file>
+                title2: b.title2,
+                title3: b.title3,
+                title4: b.title4,
+                bgColor: b.bgColor,
+              }
+            : null;
+
+        setB1(mapBanner(m.get("home-1")));
+        setB2(mapBanner(m.get("home-2")));
+      } catch {
+        // Fall back to static data if API fails
+        setB1(null);
+        setB2(null);
+      }
+    })();
+  }, []);
+
   return (
     <>
       <Hero handleOrderPopup={handleOrderPopup} />
       <Category />
       <Category2 />
       <Services />
-      <Banner data={BannerData} />
+
+      {/* Use API data if present, else fallbacks so design stays identical */}
+      <Banner data={b1 || FALLBACK_1} />
       <Products />
-      <Banner data={BannerData2} />
+      <Banner data={b2 || FALLBACK_2} />
+
       <Blogs />
       <Partners />
     </>
   );
-};
+}
 
-export default Home;

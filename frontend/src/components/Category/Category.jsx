@@ -1,77 +1,87 @@
-import React from 'react'
-import Image1 from "../../assets/category/earphone.png";
-import Image2 from "../../assets/category/watch.png";
-import Image3 from "../../assets/category/macbook.png";
+import React from "react";
 import Button from "../Shared/Button";
-const Category = () => {
-  return (
-    <div className='py-8'>
-        <div className='container'>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4
-            gap-8">
-                {/* first col  */}
-                <div className='py-10 pl-5 bg-gradient-to-br from-black/90
-                 to-black/70 text-white rounded-3xl relative h-[320px] 
-                 flex items-end'>
-                    <div>
-                        <div className='mb-4'>
-                            <p className='mb-[2px] text-gray-400'>Enjoy</p>
-                            <p className='text-2xl font-semibold mb-[2px]'>With</p>
-                            <p className='text-4xl xl:text-5xl font-bold opacity-20
-                            mb-2'>
-                                Earphones</p>
-                            <Button 
-                            text ="Browse"
-                            bgColor={"bg-primary"}
-                            textColor={"text-white"}
-                            />
-                        </div>
-                    </div>
-                    <img src={Image1} alt="" className='w-[320px] absolute bottom-0 ' />
-                </div>
-                {/* second col  */}
-                <div className='py-10 pl-5 bg-gradient-to-br from-brandYellow
-                 to-brandYellow/90 text-white rounded-3xl relative h-[320px] 
-                 flex items-end'>
-                    <div>
-                        <div className='mb-4'>
-                            <p className='mb-[2px] text-white'>Enjoy</p>
-                            <p className='text-2xl font-semibold mb-[2px]'>With</p>
-                            <p className='text-4xl xl:text-5xl font-bold opacity-40
-                            mb-2'>
-                                Gadget</p>
-                            <Button 
-                            text ="Browse"
-                            bgColor={"bg-white"}
-                            textColor={"text-brandYellow"}
-                            />
-                        </div>
-                    </div>
-                    <img src={Image2} alt="" className='w-[320px] absolute -right-4 lg:top-[40px] ' />
-                </div>
-                {/* third col  */}
-                    <div className='col-span-2 py-10 pl-5 bg-gradient-to-br from-primary
-                 to-primary/70 text-white rounded-3xl relative h-[320px] 
-                 flex items-end'>
-                    <div>
-                        <div className='mb-4'>
-                            <p className='mb-[2px] text-white'>Enjoy</p>
-                            <p className='text-2xl font-semibold mb-[2px]'>With</p>
-                            <p className='text-4xl xl:text-5xl font-bold opacity-40 mb-2'>
-                                Laptop</p>
-                            <Button 
-                            text ="Browse"
-                            bgColor={"bg-white"}
-                            textColor={"text-primary"}
-                            />
-                        </div>
-                    </div>
-                    <img src={Image3} alt="" className='w-[250px] absolute top-1/2 -translate-y-1/2 -right-0' />
-                </div>
-            </div>
-        </div>
-    </div>
-  )
-}
+import api from "../../shared/api";
 
-export default Category
+const Category = () => {
+  const [items, setItems] = React.useState([]);   // keep as array
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState("");
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const data = await api("/api/categories"); // public list
+        const rows = Array.isArray(data?.rows) ? data.rows : [];
+        const sorted = [...rows].sort(
+        (a, b) => (a.order - b.order) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+setItems(sorted.slice(0, 3));
+
+    } catch (e) {
+        setError(e.message || "Failed to load categories");
+        setItems([]);                              // ✅ keep as array on error
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const [first, second, third] = items;           // items already first 3
+  const t = (o, k, d) => (o && o[k]) || d;
+
+  return (
+    <div className="py-8">
+      <div className="container">
+        {error && <p className="text-red-600 mb-3">{error}</p>}
+        {loading ? (
+          <p>Loading…</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Earphones */}
+            {first && (
+              <div className="py-10 pl-5 bg-gradient-to-br from-black/90 to-black/70 text-white rounded-3xl relative h-[320px] flex items-end">
+                <div className="mb-4">
+                  <p className="mb-[2px] text-gray-400">{t(first, "subtitleTop", "Enjoy")}</p>
+                  <p className="text-2xl font-semibold mb-[2px]">{t(first, "subtitleMid", "With")}</p>
+                  <p className="text-4xl xl:text-5xl font-bold opacity-20 mb-2">{t(first, "title", "Earphones")}</p>
+                  <Button text={t(first, "buttonLabel", "Browse")} bgColor={"bg-primary"} textColor={"text-white"} />
+                </div>
+                {first.imageUrl && <img src={first.imageUrl} alt={first.title} className="w-[320px] absolute bottom-0" />}
+              </div>
+            )}
+
+            {/* Gadget */}
+            {second && (
+              <div className="py-10 pl-5 bg-gradient-to-br from-brandYellow to-brandYellow/90 text-white rounded-3xl relative h-[320px] flex items-end">
+                <div className="mb-4">
+                  <p className="mb-[2px] text-white">{t(second, "subtitleTop", "Enjoy")}</p>
+                  <p className="text-2xl font-semibold mb-[2px]">{t(second, "subtitleMid", "With")}</p>
+                  <p className="text-4xl xl:text-5xl font-bold opacity-40 mb-2">{t(second, "title", "Gadget")}</p>
+                  <Button text={t(second, "buttonLabel", "Browse")} bgColor={"bg-white"} textColor={"text-brandYellow"} />
+                </div>
+                {second.imageUrl && <img src={second.imageUrl} alt={second.title} className="w-[320px] absolute -right-4 lg:top-[40px]" />}
+              </div>
+            )}
+
+            {/* Laptop */}
+            {third && (
+              <div className="col-span-2 py-10 pl-5 bg-gradient-to-br from-primary to-primary/70 text-white rounded-3xl relative h-[320px] flex items-end">
+                <div className="mb-4">
+                  <p className="mb-[2px] text-white">{t(third, "subtitleTop", "Enjoy")}</p>
+                  <p className="text-2xl font-semibold mb-[2px]">{t(third, "subtitleMid", "With")}</p>
+                  <p className="text-4xl xl:text-5xl font-bold opacity-40 mb-2">{t(third, "title", "Laptop")}</p>
+                  <Button text={t(third, "buttonLabel", "Browse")} bgColor={"bg-white"} textColor={"text-primary"} />
+                </div>
+                {third.imageUrl && <img src={third.imageUrl} alt={third.title} className="w-[250px] absolute top-1/2 -translate-y-1/2 -right-0" />}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Category;
