@@ -8,14 +8,9 @@ const PRESETS = {
   Category: ['key','title','image','order','isActive'],
   Footer: ['key','content','order','isActive'],
   Hero: ['key','title','image','content','order','isActive'],
-  Navbar: ['key','content','order','isActive'],
   Partners: ['key','image','order','isActive'],
-  Popup: ['key','title','content','order','isActive'],
   Products: ['key','content','order','isActive'],
   Services: ['key','title','content','order','isActive'],
-  SliderComponents: ['key','image','content','order','isActive'],
-  Heading: ['key','title','order','isActive'],
-  Button: ['key','title','content','order','isActive']
 };
 
 function Field({ label, value, onChange, type='text' }){

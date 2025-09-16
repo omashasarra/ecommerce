@@ -1,4 +1,7 @@
 import { Category } from "../models/Category.js";
+import { normalizeImagePath } from "../utils/imagePath.js";
+
+const filenameOnly = (p) => (!p ? "" : p.includes("/") ? p.split("/").pop() : p);
 
 export async function adminList(req, res, next) {
   try {
@@ -29,42 +32,41 @@ export async function adminGetOne(req, res, next) {
 
 export async function adminCreate(req, res, next) {
   try {
-    const { title, imageUrl } = req.body;
-    if (!title || !imageUrl) {
-      return res.status(400).json({ error: { message: "title and imageUrl are required" } });
-    }
+    const body = { ...req.body };
+   body.imageUrl = normalizeImagePath("category", req.file, body.imageUrl);
+   if (!body.imageUrl) {
+     return res.status(400).json({ error: { message: "Image file is required" } });
+   }
 
-    const maxOrderDoc = await Category.findOne({}, { order: 1 }).sort({ order: -1 }).lean();
-    const nextOrder = (maxOrderDoc?.order ?? -1) + 1;
-
-    const created = await Category.create({ ...req.body, order: nextOrder });
+    const created = await Category.create(body);
     res.status(201).json(created);
-  } catch (error) { next(error); }
+  } catch (err) { next(err); }
 }
 
 export async function adminUpdate(req, res, next) {
   try {
-    const updated = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const body = { ...req.body };
+   const normalized = normalizeImagePath("category", req.file, body.imageUrl);
+   if (normalized) body.imageUrl = normalized; else delete body.imageUrl;
+
+    const updated = await Category.findByIdAndUpdate(req.params.id, body, { new: true });
     if (!updated) return res.status(404).json({ error: { message: "Not found" } });
     res.json(updated);
-  } catch (error) { next(error); }
+  } catch (err) { next(err); }
 }
 
 export async function adminRemove(req, res, next) {
   try {
     const removed = await Category.findByIdAndDelete(req.params.id);
     if (!removed) return res.status(404).json({ error: { message: "Not found" } });
-    res.json({ ok: true, id: req.params.id });   // instead of 204
+    res.json({ ok: true, id: req.params.id });
   } catch (error) { next(error); }
 }
 
-// public
 export async function publicList(_req, res, next) {
   try {
-    const rows = await Category.find()
-      .sort({ order: 1, createdAt: 1 }) // deterministic order
-      .lean();
-    res.set('Cache-Control', 'no-store'); // avoid CDN/browser caching
+    const rows = await Category.find().sort({ order: 1, createdAt: 1 }).lean();
+    res.set("Cache-Control", "no-store");
     res.json({ rows });
   } catch (error) { next(error); }
 }

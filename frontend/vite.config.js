@@ -10,11 +10,37 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: 5173,
       proxy: {
-        // ✅ use a path prefix, not "^/api"
         "/api": {
           target: "http://127.0.0.1:5000",
           changeOrigin: true,
-          // no rewrite needed since your backend expects /api/*
+        },
+        "/banner": {
+          target: "http://127.0.0.1:5000",
+          changeOrigin: true,
+        },
+        "/category": {
+          target: "http://127.0.0.1:5000",
+          changeOrigin: true,
+        },
+        "/blogs": {
+          target: "http://127.0.0.1:5000",
+          changeOrigin: true,
+        },
+        "/hero": {
+          target: "http://127.0.0.1:5000",
+          changeOrigin: true,
+        },
+        "/brand": {
+          target: "http://127.0.0.1:5000",
+          changeOrigin: true,
+        },
+        "/product" : {
+          target: "http://127.0.0.1:5000",
+          changeOrigin: true,
+        },
+        "/products": {
+          target: "http://127.0.0.1:5000",
+          changeOrigin: true,
         },
       },
     },

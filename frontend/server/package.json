@@ -17,7 +17,8 @@
     "seed:services": "node scripts/seedServices.js",
     "seed:services:keep": "KEEP=1 node scripts/seedServices.js",
     "seed:partners": "node scripts/seed-partners.js",
-    "seed:banner": "node scripts/seed-banners.js"
+    "seed:banner": "node scripts/seed-banners.js",
+    "seed:products": "node scripts/seedProducts.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -29,7 +30,8 @@
     "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.0",
-    "morgan": "^1.10.1"
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"

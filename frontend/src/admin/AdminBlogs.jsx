@@ -1,7 +1,6 @@
-// src/admin/AdminBlogs.jsx
 import React from "react";
-import { api } from "../shared/api";   // ← use your helper (adds Bearer token)
-import { auth } from "../shared/auth"; // ← optional: guard for non-admins
+import { api } from "../shared/api";
+import { auth } from "../shared/auth";
 import { useNavigate } from "react-router-dom";
 
 function Field({ label, children }) {
@@ -15,31 +14,89 @@ function Field({ label, children }) {
   );
 }
 
+// Tiny no-deps HTML editor
+function HtmlEditor({ value, onChange, minHeight = 160 }) {
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    if (ref.current && value !== undefined) {
+      ref.current.innerHTML = value || "";
+    }
+  }, [value]);
+
+  function exec(cmd, arg = null) {
+    ref.current?.focus();
+    document.execCommand(cmd, false, arg);
+    onChange?.(ref.current?.innerHTML || "");
+  }
+
+  function onInput() {
+    onChange?.(ref.current?.innerHTML || "");
+  }
+
+  function insertLink() {
+    const url = window.prompt("Enter URL:");
+    if (url) exec("createLink", url);
+  }
+
+  function setBlock(tag) {
+    exec("formatBlock", `<${tag}>`);
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1 mb-2">
+        <button type="button" onClick={() => exec("bold")} className="px-2 py-1 border rounded">B</button>
+        <button type="button" onClick={() => exec("italic")} className="px-2 py-1 border rounded italic">I</button>
+        <button type="button" onClick={() => exec("underline")} className="px-2 py-1 border rounded">U</button>
+        <button type="button" onClick={() => setBlock("p")} className="px-2 py-1 border rounded">P</button>
+        <button type="button" onClick={() => setBlock("h3")} className="px-2 py-1 border rounded">H3</button>
+        <button type="button" onClick={() => exec("insertUnorderedList")} className="px-2 py-1 border rounded">• List</button>
+        <button type="button" onClick={() => exec("insertOrderedList")} className="px-2 py-1 border rounded">1. List</button>
+        <button type="button" onClick={insertLink} className="px-2 py-1 border rounded">Link</button>
+        <button type="button" onClick={() => exec("removeFormat")} className="px-2 py-1 border rounded">Clear</button>
+      </div>
+
+      <div
+        ref={ref}
+        contentEditable
+        onInput={onInput}
+        className="w-full rounded border dark:bg-slate-800 dark:border-slate-700 p-3 prose prose-sm max-w-none dark:prose-invert"
+        style={{ minHeight }}
+        spellCheck={false}
+      />
+      <p className="mt-1 text-xs text-gray-500">
+        Tip: paste formatted text, or use the toolbar. You can also add spacing using paragraphs.
+      </p>
+    </div>
+  );
+}
+
 export default function AdminBlogs() {
   const nav = useNavigate();
   const [rows, setRows] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState("");
-  const [editing, setEditing] = React.useState(null);        // blog doc or null
-  const [confirmDelete, setConfirmDelete] = React.useState(null); // blog doc or null
+  const [editing, setEditing] = React.useState(null);
+  const [confirmDelete, setConfirmDelete] = React.useState(null);
 
-  // optional: block access if not authed/admin
+  // NEW: local file + preview while editing
+  const [selectedFile, setSelectedFile] = React.useState(null);
+  const [previewURL, setPreviewURL] = React.useState("");
+
   React.useEffect(() => {
     if (!auth.isAuthed() || !auth.isAdmin()) {
       nav("/login", { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function load() {
     try {
       setLoading(true);
       setError("");
-      // ADMIN list (requires token) — NOT /api/blogs
       const json = await api(`/api/blogs/admin`);
       setRows(Array.isArray(json?.data) ? json.data : json?.rows || []);
     } catch (e) {
-      // 401 → token missing/expired → send user to login
       if (e.status === 401) nav("/login");
       setError(e.message || "Failed to fetch blogs");
     } finally {
@@ -47,21 +104,45 @@ export default function AdminBlogs() {
     }
   }
 
-  React.useEffect(() => { load(); }, []); // load once
+  React.useEffect(() => {
+    load();
+  }, []);
 
-  function onEdit(blog) { setEditing({ ...blog }); }
-  function onCancelEdit() { setEditing(null); }
+  function onEdit(blog) {
+    setEditing({ ...blog });
+    setSelectedFile(null);
+    setPreviewURL(blog?.image || ""); // show currently stored image if any
+  }
+  function onCancelEdit() {
+    setEditing(null);
+    setSelectedFile(null);
+    setPreviewURL("");
+  }
 
   async function onSaveEdit(e) {
     e.preventDefault();
     try {
-      const { _id, ...payload } = editing;
-      // ADMIN update endpoint
+      const { _id, image, ...payload } = editing; // exclude image URL; file will replace if provided
+
+      // Build multipart/form-data
+      const form = new FormData();
+      for (const [k, v] of Object.entries(payload)) {
+        if (v === null || v === undefined) continue;
+        // convert objects to strings (e.g., dates already strings)
+        form.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
+      }
+      if (selectedFile) {
+        form.append("image", selectedFile); // field name must match uploader.single("image")
+      }
+
       await api(`/api/blogs/admin/${_id}`, {
         method: "PUT",
-        body: payload,
+        body: form,
       });
+
       setEditing(null);
+      setSelectedFile(null);
+      setPreviewURL("");
       await load();
     } catch (err) {
       if (err.status === 401) nav("/login");
@@ -69,13 +150,16 @@ export default function AdminBlogs() {
     }
   }
 
-  function onAskDelete(blog) { setConfirmDelete(blog); }
-  function onCancelDelete() { setConfirmDelete(null); }
+  function onAskDelete(blog) {
+    setConfirmDelete(blog);
+  }
+  function onCancelDelete() {
+    setConfirmDelete(null);
+  }
 
   async function onConfirmDelete() {
     try {
       const id = confirmDelete._id;
-      // ADMIN delete endpoint
       await api(`/api/blogs/admin/${id}`, { method: "DELETE" });
       setConfirmDelete(null);
       await load();
@@ -164,7 +248,9 @@ export default function AdminBlogs() {
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-3 z-50">
           <form
             onSubmit={onSaveEdit}
-            className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-xl p-4 shadow-xl"
+            id="edit-blog-modal"
+            className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-xl p-4 shadow-xl
+                       max-h-[85vh] overflow-y-auto"
           >
             <h3 className="text-lg font-semibold mb-3">Edit Blog</h3>
 
@@ -212,13 +298,39 @@ export default function AdminBlogs() {
                 />
               </Field>
 
-              <Field label="Image URL (from /public)">
-                <input
-                  className="w-full px-3 py-2 rounded border dark:bg-slate-800 dark:border-slate-700"
-                  value={editing.image || ""}
-                  onChange={(e) => setEditing({ ...editing, image: e.target.value })}
-                  placeholder="/blogs/blog-1.jpg"
-                />
+              {/* ✅ Image upload from desktop (no URL input) */}
+              <Field label="Blog Image (upload from desktop)">
+                <div className="space-y-2">
+                  {previewURL ? (
+                    <img
+                      src={previewURL}
+                      alt="preview"
+                      className="w-full h-36 object-cover rounded-lg"
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                    />
+                  ) : null}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setSelectedFile(file);
+                      if (file) {
+                        const url = URL.createObjectURL(file);
+                        setPreviewURL(url);
+                      } else {
+                        setPreviewURL(editing?.image || "");
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded border dark:bg-slate-800 dark:border-slate-700"
+                  />
+                  {/* Show current stored path if no new file chosen */}
+                  {editing?.image && !selectedFile && (
+                    <p className="text-xs text-gray-500 break-all">
+                      Stored: {editing.image}
+                    </p>
+                  )}
+                </div>
               </Field>
 
               <Field label="Order">
@@ -249,6 +361,25 @@ export default function AdminBlogs() {
                   <option value="1">Yes</option>
                   <option value="0">No</option>
                 </select>
+              </Field>
+            </div>
+
+            {/* Rich text editors */}
+            <div className="mt-4 grid grid-cols-1 gap-4">
+              <Field label="Excerpt (short paragraph – HTML)">
+                <HtmlEditor
+                  value={editing.excerpt || ""}
+                  onChange={(html) => setEditing({ ...editing, excerpt: html })}
+                  minHeight={120}
+                />
+              </Field>
+
+              <Field label="Content (full HTML)">
+                <HtmlEditor
+                  value={editing.content || ""}
+                  onChange={(html) => setEditing({ ...editing, content: html })}
+                  minHeight={240}
+                />
               </Field>
             </div>
 

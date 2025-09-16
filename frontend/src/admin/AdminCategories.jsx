@@ -133,28 +133,62 @@ function Modal({ title, children, onClose, width = "w-[600px]" }) {
 }
 
 function CategoryForm({ initial, onSave, onCancel }) {
-  const [form, setForm] = React.useState(
-    initial || {
-      title: "",
-      subtitleTop: "Enjoy",
-      subtitleMid: "With",
-      buttonLabel: "Browse",
-      imageUrl: "",
-    }
-  );
+  const defaultForm = React.useMemo(() => ({
+    title: "",
+    subtitleTop: "Enjoy",
+    subtitleMid: "With",
+    buttonLabel: "Browse",
+    imageUrl: "",
+  }), []);
+
+  const [form, setForm] = React.useState(initial || defaultForm);
+  const [imageFile, setImageFile] = React.useState(null);
+  const [uploading, setUploading] = React.useState(false);
   const [err, setErr] = React.useState("");
+
+  // keep form in sync when opening/closing modal or switching rows
+  React.useEffect(() => {
+    setForm(initial || defaultForm);
+    setImageFile(null);
+    setErr("");
+    setUploading(false);
+  }, [initial, defaultForm]);
 
   function update(name, value) {
     setForm((f) => ({ ...f, [name]: value }));
   }
 
+  // ⇩⇩ THIS is the upload helper that uses your shared api()
+  async function uploadImage(file) {
+    const fd = new FormData();
+    fd.append("image", file); // field name must be "image" to match backend multer
+    const data = await api("/api/categories/admin/upload", {
+      method: "POST",
+      body: fd,
+    });
+    // backend returns { filename, url }
+    return data;
+  }
+
   async function submit(e) {
     e.preventDefault();
     setErr("");
+
     try {
-      await onSave(form);
+      let payload = { ...form };
+
+      if (imageFile) {
+        setUploading(true);
+        const { filename, url } = await uploadImage(imageFile);
+        // Keep using imageUrl in admin to avoid breaking other pages
+        payload.imageUrl = url; // you can switch to filename later if you decide
+      }
+
+      await onSave(payload);
     } catch (ex) {
       setErr(ex.message || "Save Failed");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -193,19 +227,47 @@ function CategoryForm({ initial, onSave, onCancel }) {
         />
       </Field>
 
-      <Field label="Image URL">
+      {/* Image URL (optional; kept so other pages remain unchanged) */}
+      <Field label="Image URL (optional)">
         <TextInput
           value={form.imageUrl}
           onChange={(e) => update("imageUrl", e.target.value)}
-          placeholder="https://…"
+          placeholder="/category/your-file.png or https://…"
         />
+      </Field>
+
+      {/* Desktop upload */}
+      <Field label="Upload Image">
+        <div className="flex items-center gap-3">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+          />
+          {(form.imageUrl || imageFile) ? (
+            <img
+              src={imageFile ? URL.createObjectURL(imageFile) : form.imageUrl}
+              alt="preview"
+              className="h-12 w-auto rounded border border-gray-200 dark:border-slate-800"
+            />
+          ) : (
+            <span className="text-xs text-gray-400 dark:text-slate-500">
+              No image
+            </span>
+          )}
+        </div>
+        {uploading && (
+          <p className="text-xs text-gray-500 mt-1">Uploading…</p>
+        )}
       </Field>
 
       <div className="flex gap-2 pt-2">
         <GhostButton type="button" onClick={onCancel}>
           Cancel
         </GhostButton>
-        <SoftButton type="submit">Save</SoftButton>
+        <SoftButton type="submit" disabled={uploading}>
+          {uploading ? "Uploading…" : "Save"}
+        </SoftButton>
       </div>
     </form>
   );
@@ -237,10 +299,10 @@ export default function AdminCategories() {
         sortDir,
       });
       const res = await api(`/api/categories/admin?${query}`);
-      setRows(res.rows);
-      setTotal(res.total);
+      setRows(res.rows || []);
+      setTotal(res.total || 0);
     } catch (e) {
-      setError(e.message);
+      setError(e.message || "Failed to load");
     } finally {
       setLoading(false);
     }
@@ -255,7 +317,7 @@ export default function AdminCategories() {
     if (editing) {
       const updated = await api(`/api/categories/admin/${editing._id}`, {
         method: "PUT",
-        body: form,
+        body: form,      // api() will JSON-encode plain objects
       });
       setRows((prev) => prev.map((r) => (r._id === updated._id ? updated : r)));
       setEditing(null);

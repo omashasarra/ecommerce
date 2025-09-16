@@ -114,7 +114,7 @@ export default function Footer() {
 
               {/* Company Address */}
               <div className="py-8 px-4 col-span-2 sm:col-auto">
-                <h1 className="text-xl font-bold sm:text-left mb-3">Adress </h1>
+                <h1 className="text-xl font-bold sm:text-left mb-3">Address </h1>
                 <div>
                   <div className="flex items-center gap-3">
                     <FaLocationArrow />

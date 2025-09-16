@@ -1,12 +1,12 @@
 import { Blog } from "../models/Blog.js";
+import { normalizeImagePath } from "../utils/imagePath.js";
 
-// GET /api/blogs/admin
 export async function adminList(req, res, next) {
   try {
     const page     = Math.max(parseInt(req.query.page || "1", 10), 1);
     const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || "10", 10), 1), 100);
     const search   = (req.query.search || "").trim();
-    const sortBy   = req.query.sortBy || "updatedAt"; // keep close to your original
+    const sortBy   = req.query.sortBy || "updatedAt"; 
     const sortDir  = req.query.sortDir === "asc" ? 1 : -1;
 
     const filter = search
@@ -36,7 +36,6 @@ export async function adminList(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// GET /api/blogs/admin/:id
 export async function adminGetOne(req, res, next) {
   try {
     const row = await Blog.findById(req.params.id).lean();
@@ -45,28 +44,34 @@ export async function adminGetOne(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// POST /api/blogs/admin
 export async function adminCreate(req, res, next) {
   try {
-    // optional: auto-increment `order` similar to your Category controller
     const maxOrderDoc = await Blog.findOne({}, { order: 1 }).sort({ order: -1 }).lean();
     const nextOrder = (maxOrderDoc?.order ?? -1) + 1;
 
-    const created = await Blog.create({ ...req.body, order: req.body.order ?? nextOrder });
+   const fileImage = normalizeImagePath("blogs", req.file, req.body?.image);
+
+    const payload = { ...req.body, order: req.body.order ?? nextOrder };
+    if (fileImage) payload.image = fileImage;
+
+    const created = await Blog.create(payload);
     res.status(201).json({ ok: true, data: created });
   } catch (error) { next(error); }
 }
 
-// PUT /api/blogs/admin/:id
 export async function adminUpdate(req, res, next) {
   try {
-    const updated = await Blog.findByIdAndUpdate(req.params.id, req.body, { new: true });
+   const fileImage = normalizeImagePath("blogs", req.file, req.body?.image);
+
+    const update = { ...req.body };
+    if (fileImage) update.image = fileImage;
+
+    const updated = await Blog.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!updated) return res.status(404).json({ ok: false, error: "Not found" });
     res.json({ ok: true, data: updated });
   } catch (error) { next(error); }
 }
 
-// DELETE /api/blogs/admin/:id
 export async function adminRemove(req, res, next) {
   try {
     const removed = await Blog.findByIdAndDelete(req.params.id);
@@ -76,7 +81,6 @@ export async function adminRemove(req, res, next) {
 }
 
 
-// GET /api/blogs
 export async function publicList(req, res, next) {
   try {
     const limit     = Math.min(parseInt(req.query.limit) || 9, 100);
@@ -94,7 +98,7 @@ export async function publicList(req, res, next) {
         .lean(),
     ]);
 
-    res.set("Cache-Control", "no-store"); // consistent with your categories controller note
+    res.set("Cache-Control", "no-store");
     res.json({
       ok: true,
       data: items,

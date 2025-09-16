@@ -9,6 +9,7 @@ import AdminHero from '../admin/AdminHero.jsx';
 import AdminServices from '../admin/AdminServices.jsx';
 import AdminPartners from '../admin/AdminPartners.jsx';
 import AdminBanners from '../admin/AdminBanners.jsx';
+import AdminProduct from '../admin/AdminProduct.jsx';
 
 
 const TYPES = [
@@ -45,6 +46,8 @@ export default function AdminDashboard() {
           <AdminServices /> 
         ) : active === "Partners" ? (
           <AdminPartners /> 
+        ) : active === "Products" ? (
+          <AdminProduct />
         ) : (
           <BlockList type={active} />
         )}

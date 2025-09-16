@@ -38,28 +38,34 @@ export async function adminGetOne(req, res, next){
 }
 
 export async function adminCreate (req, res, next) {
-    try {
-        const { img } = req.body;
-        if (!img) return res.status(400).json({ error: { message: "img is required" } });
+  try {
+    const fileImg = req.file ? `/hero/${req.file.filename}` : undefined;
 
-        const maxOrderDoc = await HeroSlide.findOne({}, { order: 1}).sort({ order: -1}).lean();
-        const nextOrder = (maxOrderDoc?.order ?? -1) +1;
+    const maxOrderDoc = await HeroSlide.findOne({}, { order: 1 }).sort({ order: -1 }).lean();
+    const nextOrder = (maxOrderDoc?.order ?? -1) + 1;
 
-        const created = await HeroSlide.create({ ...req.body, order: nextOrder });
-        res.status(201).json(created);
-    } catch (error) {
-        next(error);
+    const payload = { ...req.body, order: req.body.order ?? nextOrder };
+    if (fileImg) payload.img = fileImg;
+
+    if (!payload.img) {
+      return res.status(400).json({ error: { message: "img is required" } });
     }
+
+    const created = await HeroSlide.create(payload);
+    res.status(201).json(created);
+  } catch (error) { next(error); }
 }
 
 export async function adminUpdate(req, res, next) {
-    try {
-        const updated = await HeroSlide.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!updated) return res.status(404).json({ error: { message: "Not found" } });
-        res.json(updated);
-    } catch (error) {
-        next(error);
+  try {
+    const update = { ...req.body };
+    if (req.file) {
+      update.img = `/hero/${req.file.filename}`;
     }
+    const updated = await HeroSlide.findByIdAndUpdate(req.params.id, update, { new: true });
+    if (!updated) return res.status(404).json({ error: { message: "Not found" } });
+    res.json(updated);
+  } catch (error) { next(error); }
 }
 
 export async function adminRemove(req, res, next) {

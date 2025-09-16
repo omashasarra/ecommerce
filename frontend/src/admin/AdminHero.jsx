@@ -141,6 +141,9 @@ function Modal({ title, children, onClose, width = "w-[600px]" }) {
 }
 /* -------------------------------------------------- */
 
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+const toAbsolute = (src) => (!src ? "" : src.startsWith("/") ? `${API_BASE}${src}` : src);
+
 function HeroForm({ initial, onSave, onCancel }) {
   const [form, setForm] = React.useState(
     initial || {
@@ -148,22 +151,38 @@ function HeroForm({ initial, onSave, onCancel }) {
       title: "",
       title2: "",
       buttonLabel: "Shop Now",
-      img: "",
       order: 0,
       isActive: true,
     }
   );
+
+  // NEW: local file + preview (no URL field anymore)
+  const [file, setFile] = React.useState(null);
+  const [preview, setPreview] = React.useState(initial?.img ? toAbsolute(initial.img) : "");
   const [err, setErr] = React.useState("");
 
   function update(name, value) {
     setForm((f) => ({ ...f, [name]: value }));
   }
 
+  function onPick(e) {
+    const f = e.target.files?.[0] || null;
+    setFile(f);
+    setPreview(f ? URL.createObjectURL(f) : initial?.img ? toAbsolute(initial.img) : "");
+  }
+
   async function submit(e) {
     e.preventDefault();
     setErr("");
     try {
-      await onSave(form);
+      const fd = new FormData();
+      for (const [k, v] of Object.entries(form)) {
+        if (v === null || v === undefined) continue;
+        fd.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
+      }
+      if (file) fd.append("img", file); // field name must match backend uploader
+
+      await onSave(fd);
     } catch (ex) {
       setErr(ex.message || "Save Failed");
     }
@@ -171,9 +190,7 @@ function HeroForm({ initial, onSave, onCancel }) {
 
   return (
     <form onSubmit={submit} className="p-4 text-gray-900 dark:text-slate-100">
-      {err && (
-        <p className="text-red-600 dark:text-red-400 mb-2 text-sm">{err}</p>
-      )}
+      {err && <p className="text-red-600 dark:text-red-400 mb-2 text-sm">{err}</p>}
 
       <Field label="Subtitle">
         <TextInput
@@ -207,12 +224,27 @@ function HeroForm({ initial, onSave, onCancel }) {
         />
       </Field>
 
-      <Field label="Image URL">
-        <TextInput
-          value={form.img}
-          onChange={(e) => update("img", e.target.value)}
-          placeholder="https://…"
-        />
+      {/* ✅ Image upload from desktop (replaces URL input) */}
+      <Field label="Hero Image (upload from desktop)">
+        <div className="space-y-2">
+          {preview ? (
+            <img
+              src={preview}
+              alt="preview"
+              className="h-28 w-auto rounded border border-gray-200 dark:border-slate-800"
+              onError={(e) => (e.currentTarget.style.display = "none")}
+            />
+          ) : null}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={onPick}
+            className="w-full rounded border dark:bg-slate-900 dark:border-slate-800 px-3 py-2"
+          />
+          {!file && initial?.img && (
+            <p className="text-xs text-gray-500 break-all">Stored: {initial.img}</p>
+          )}
+        </div>
       </Field>
 
       <Field label="Order">
@@ -264,18 +296,18 @@ export default function AdminHero() {
     load();
   }, []);
 
-  async function save(form) {
+  async function save(body /* FormData */) {
     if (editing) {
       const updated = await api(`/api/hero/admin/${editing._id}`, {
         method: "PUT",
-        body: form,
+        body,
       });
       setRows((prev) => prev.map((r) => (r._id === updated._id ? updated : r)));
       setEditing(null);
     } else {
       const created = await api("/api/hero/admin", {
         method: "POST",
-        body: form,
+        body,
       });
       setRows((prev) => [created, ...prev]);
       setCreating(false);
@@ -296,9 +328,7 @@ export default function AdminHero() {
         New Slide
       </SoftButton>
 
-      {error && (
-        <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>}
 
       {loading ? (
         <Card className="p-4 text-sm">Loading…</Card>
@@ -315,10 +345,7 @@ export default function AdminHero() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr
-                  key={r._id}
-                  className="border-t border-gray-200 dark:border-slate-800"
-                >
+                <tr key={r._id} className="border-t border-gray-200 dark:border-slate-800">
                   <td className="p-2 align-middle">
                     <div className="font-medium">{r.title}</div>
                     <div className="text-xs text-gray-500 dark:text-slate-400">
@@ -339,15 +366,13 @@ export default function AdminHero() {
                   <td className="p-2 align-middle">
                     {r.img ? (
                       <img
-                        src={r.img}
+                        src={toAbsolute(r.img)}
                         alt={r.title || "Hero image"}
                         className="h-12 w-auto rounded border border-gray-200 dark:border-slate-800"
                         loading="lazy"
                       />
                     ) : (
-                      <span className="text-xs text-gray-400 dark:text-slate-500">
-                        No image
-                      </span>
+                      <span className="text-xs text-gray-400 dark:text-slate-500">No image</span>
                     )}
                   </td>
                   <td className="p-2 align-middle whitespace-nowrap">
@@ -357,18 +382,14 @@ export default function AdminHero() {
                     <GhostButton className="mr-2" onClick={() => setEditing(r)}>
                       Edit
                     </GhostButton>
-                    <DangerButton onClick={() => remove(r._id)}>
-                      Delete
-                    </DangerButton>
+                    <DangerButton onClick={() => remove(r._id)}>Delete</DangerButton>
                   </td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
                   <td className="p-2" colSpan={4}>
-                    <div className="text-sm text-gray-500 dark:text-slate-400">
-                      No slides
-                    </div>
+                    <div className="text-sm text-gray-500 dark:text-slate-400">No slides</div>
                   </td>
                 </tr>
               )}
@@ -380,20 +401,12 @@ export default function AdminHero() {
       {/* dialogs */}
       {creating && (
         <Modal title="New Slide" onClose={() => setCreating(false)}>
-          <HeroForm
-            initial={null}
-            onSave={save}
-            onCancel={() => setCreating(false)}
-          />
+          <HeroForm initial={null} onSave={save} onCancel={() => setCreating(false)} />
         </Modal>
       )}
       {editing && (
         <Modal title="Edit Slide" onClose={() => setEditing(null)}>
-          <HeroForm
-            initial={editing}
-            onSave={save}
-            onCancel={() => setEditing(null)}
-          />
+          <HeroForm initial={editing} onSave={save} onCancel={() => setEditing(null)} />
         </Modal>
       )}
     </div>

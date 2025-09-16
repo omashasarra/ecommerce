@@ -1,86 +1,106 @@
-// src/pages/AdminBanners.jsx
-import React, { useEffect, useState } from "react";
-import Banner from "../components/Banner/Banner";
+import React from "react";
+import Banner from "../components/Banner/Banner.jsx";
 
 const empty = {
-  position: "",
   discount: "",
   title: "",
   date: "",
-  image: "",   // filename only, e.g. "headphone.png"
+  image: "",        
   title2: "",
   title3: "",
   title4: "",
   bgColor: "#000000",
-  isActive: true,
+  active: true,
   order: 0,
 };
 
 export default function AdminBanners() {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(null); // row obj
-  const [form, setForm] = useState(empty);
-  const [open, setOpen] = useState(false);
+  const [rows, setRows] = React.useState([]);
+  const [open, setOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState(null);
+  const [form, setForm] = React.useState({ ...empty });
+  const [file, setFile] = React.useState(null);
+
+  React.useEffect(() => {
+    load();
+  }, []);
 
   async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/banners/admin");
-      const json = await res.json();
-      setRows(json.rows || []);
-    } finally {
-      setLoading(false);
-    }
+    const r = await fetch("/api/banners/admin");
+    const d = await r.json();
+    setRows(d.rows || []);
   }
-
-  useEffect(() => { load(); }, []);
 
   function openCreate() {
     setForm({ ...empty });
+    setFile(null);
     setEditing(null);
     setOpen(true);
   }
 
   function openEdit(row) {
     setForm({ ...row });
+    setFile(null);
     setEditing(row);
     setOpen(true);
   }
 
+  function onChange(e) {
+    const { name, value, type, checked } = e.target;
+    setForm((f) => ({ ...f, [name]: type === "checkbox" ? !!checked : value }));
+  }
+
+  const filenameOnly = (p) => (!p ? "" : p.includes("/") ? p.split("/").pop() : p);
+
+  const resolveImage = (image) => {
+    if (!image) return "";
+    if (image.startsWith("blob:")) return image;              
+    if (/^https?:\/\//i.test(image)) return image;            
+    if (image.startsWith("/banner/")) return image;           
+    if (image.includes("/")) return `/banner/${filenameOnly(image)}`; 
+    return `/banner/${image}`;                                
+  };
+
   async function save(e) {
     e.preventDefault();
-    const payload = { ...form, order: Number(form.order) || 0 };
+
+    const fd = new FormData();
+
+    Object.entries({ ...form, order: Number(form.order) || 0 }).forEach(([k, v]) => {
+      if (k === "image" && file) return;           
+      if (k === "image" && !file) v = filenameOnly(v); 
+      if (v === undefined || v === null) v = "";
+      fd.append(k, v);
+    });
+
+    if (file) fd.append("image", file);
+
     const url = editing ? `/api/banners/admin/${editing._id}` : "/api/banners/admin";
     const method = editing ? "PUT" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+
+    const res = await fetch(url, { method, body: fd });
     if (res.ok) {
       setOpen(false);
       setEditing(null);
+      setFile(null);
       await load();
     } else {
-      const err = await res.json().catch(()=>({}));
+      const err = await res.json().catch(() => ({}));
       alert(err?.error?.message || "Save failed");
     }
   }
 
-  async function remove(id) {
-    if (!window.confirm("Delete banner?")) return;
-    await fetch(`/api/banners/admin/${id}`, { method: "DELETE" });
-    load();
+  async function remove(row) {
+    if (!confirm("Delete this banner?")) return;
+    const res = await fetch(`/api/banners/admin/${row._id}`, { method: "DELETE" });
+    if (res.ok) load();
   }
 
-  // live preview data (uses your Banner component)
   const preview = {
     discount: form.discount,
     title: form.title,
     date: form.date,
-    // preview uses public path to /banner/<filename>
-    image: form.image ? `/banner/${form.image}` : "",
+    image: file ? URL.createObjectURL(file) : resolveImage(form.image),
     title2: form.title2,
     title3: form.title3,
     title4: form.title4,
@@ -88,147 +108,188 @@ export default function AdminBanners() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <main className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold">Banners</h1>
-        <button onClick={openCreate} className="px-3 py-2 rounded bg-blue-600 text-white">
-          + New Banner
+        <h1 className="text-2xl font-semibold">Admin Banners</h1>
+        <button
+          onClick={openCreate}
+          className="rounded bg-blue-600 text-white px-4 py-2"
+        >
+          New Banner
         </button>
       </div>
 
-      {loading && <div>Loading…</div>}
-
-      {!loading && (
-        <div className="overflow-x-auto border rounded">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-2 text-left">Position</th>
-                <th className="p-2 text-left">Title</th>
-                <th className="p-2 text-left">Image</th>
-                <th className="p-2 text-left">Order</th>
-                <th className="p-2 text-left">Active</th>
-                <th className="p-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(r => (
-                <tr key={r._id} className="border-t">
-                  <td className="p-2">{r.position}</td>
-                  <td className="p-2">{r.title}</td>
-                  <td className="p-2">{r.image}</td>
-                  <td className="p-2">{r.order}</td>
-                  <td className="p-2">{r.isActive ? "✅" : "❌"}</td>
-                  <td className="p-2 text-right">
-                    <button className="px-2 py-1 border rounded mr-2" onClick={() => openEdit(r)}>
-                      Edit
-                    </button>
-                    <button className="px-2 py-1 border rounded text-red-600" onClick={() => remove(r._id)}>
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td className="p-2 text-center" colSpan={6}>No banners</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* modal */}
-      {open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
-          <form onSubmit={save} className="bg-white rounded p-5 w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold">{editing ? "Edit Banner" : "New Banner"}</h2>
-
-              <label className="block text-sm">Position (e.g. home-1 / home-2)</label>
-              <input required className="border p-2 w-full"
-                value={form.position}
-                onChange={e => setForm({ ...form, position: e.target.value })}
-              />
-
-              <label className="block text-sm">Discount</label>
-              <input className="border p-2 w-full"
-                value={form.discount}
-                onChange={e => setForm({ ...form, discount: e.target.value })}
-              />
-
-              <label className="block text-sm">Title</label>
-              <input className="border p-2 w-full"
-                value={form.title}
-                onChange={e => setForm({ ...form, title: e.target.value })}
-              />
-
-              <label className="block text-sm">Date</label>
-              <input className="border p-2 w-full"
-                value={form.date}
-                onChange={e => setForm({ ...form, date: e.target.value })}
-              />
-
-              <label className="block text-sm">Image filename (in /public/banner)</label>
-              <input className="border p-2 w-full" placeholder="headphone.png"
-                value={form.image}
-                onChange={e => setForm({ ...form, image: e.target.value })}
-              />
-
-              <label className="block text-sm">Title 2</label>
-              <input className="border p-2 w-full"
-                value={form.title2}
-                onChange={e => setForm({ ...form, title2: e.target.value })}
-              />
-
-              <label className="block text-sm">Title 3</label>
-              <input className="border p-2 w-full"
-                value={form.title3}
-                onChange={e => setForm({ ...form, title3: e.target.value })}
-              />
-
-              <label className="block text-sm">Title 4</label>
-              <textarea className="border p-2 w-full"
-                value={form.title4}
-                onChange={e => setForm({ ...form, title4: e.target.value })}
-              />
-
-              <label className="block text-sm">Background Color (hex)</label>
-              <input className="border p-2 w-full" placeholder="#f42c37"
-                value={form.bgColor}
-                onChange={e => setForm({ ...form, bgColor: e.target.value })}
-              />
-
-              <div className="flex items-center gap-2">
-                <input
-                  id="isActive"
-                  type="checkbox"
-                  checked={form.isActive}
-                  onChange={e => setForm({ ...form, isActive: e.target.checked })}
+      <div className="grid gap-3">
+        {rows.map((row) => (
+          <div key={row._id} className="border rounded p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {row.image ? (
+                <img
+                  src={resolveImage(row.image)}
+                  alt=""
+                  className="w-16 h-16 object-cover rounded"
                 />
-                <label htmlFor="isActive">Active</label>
+              ) : (
+                <div className="w-16 h-16 bg-gray-200 rounded" />
+              )}
+              <div>
+                <div className="font-medium">{row.title || "(no title)"}</div>
+                <div className="text-xs text-gray-500">order: {row.order ?? 0}</div>
+                <div className="text-xs">{row.active ? "Active" : "Inactive"}</div>
               </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => openEdit(row)}
+                className="rounded bg-gray-100 px-3 py-1"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => remove(row)}
+                className="rounded bg-red-600 text-white px-3 py-1"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
 
-              <label className="block text-sm">Order</label>
-              <input type="number" className="border p-2 w-full"
-                value={form.order}
-                onChange={e => setForm({ ...form, order: e.target.value })}
-              />
+      {open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <form
+            onSubmit={save}
+            className="bg-white rounded p-5 w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            <div className="space-y-3">
+              <label className="block">
+                <span className="text-sm">Discount</span>
+                <input
+                  name="discount"
+                  value={form.discount}
+                  onChange={onChange}
+                  className="border p-2 w-full"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm">Title</span>
+                <input
+                  name="title"
+                  value={form.title}
+                  onChange={onChange}
+                  className="border p-2 w-full"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm">Date</span>
+                <input
+                  name="date"
+                  value={form.date}
+                  onChange={onChange}
+                  className="border p-2 w-full"
+                />
+              </label>
+
+              {/* Image uploader */}
+              <label className="block">
+                <span className="text-sm">Banner Image (uploads to /public/banner)</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="border p-2 w-full"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                />
+                {form.image && !file && (
+                  <div className="text-xs text-gray-600 mt-1">Current: {filenameOnly(form.image)}</div>
+                )}
+              </label>
+
+              <label className="block">
+                <span className="text-sm">Title 2</span>
+                <input
+                  name="title2"
+                  value={form.title2}
+                  onChange={onChange}
+                  className="border p-2 w-full"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm">Title 3</span>
+                <input
+                  name="title3"
+                  value={form.title3}
+                  onChange={onChange}
+                  className="border p-2 w-full"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm">Title 4</span>
+                <input
+                  name="title4"
+                  value={form.title4}
+                  onChange={onChange}
+                  className="border p-2 w-full"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm">Background Color</span>
+                <input
+                  type="color"
+                  name="bgColor"
+                  value={form.bgColor}
+                  onChange={onChange}
+                  className="border p-2 w-full h-10"
+                />
+              </label>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="active"
+                  checked={!!form.active}
+                  onChange={onChange}
+                />
+                <span className="text-sm">Active</span>
+              </label>
+
+              <label className="block">
+                <span className="text-sm">Order</span>
+                <input
+                  name="order"
+                  type="number"
+                  value={form.order}
+                  onChange={onChange}
+                  className="border p-2 w-full"
+                />
+              </label>
 
               <div className="flex gap-2 pt-2">
-                <button type="button" className="px-3 py-1 border rounded" onClick={() => setOpen(false)}>Close</button>
-                <button type="submit" className="px-3 py-1 bg-blue-600 text-white rounded">Save</button>
+                <button type="submit" className="rounded bg-blue-600 text-white px-4 py-2">
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded bg-gray-100 px-4 py-2"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
 
-            {/* Live preview using your exact Banner design */}
+            {/* Live Preview */}
             <div className="max-h-[80vh] overflow-auto rounded-lg border">
               <Banner data={preview} />
             </div>
           </form>
         </div>
       )}
-    </div>
+    </main>
   );
 }
