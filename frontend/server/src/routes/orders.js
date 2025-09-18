@@ -1,3 +1,4 @@
+// routes/orders.js  (use your existing path/filename)
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import Product from "../models/Product.js";
@@ -11,9 +12,9 @@ function optionalAuth(req, _res, next) {
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (token) {
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = payload; // { sub, role, email, name }
-    } catch { /* ignore */ }
+      req.user = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+    }
   }
   next();
 }
@@ -35,9 +36,9 @@ router.post("/", optionalAuth, async (req, res, next) => {
       return res.status(400).json({ error: { message: "No items provided" } });
     }
 
-    const ids = items.map(i => i.productId);
+    const ids = items.map((i) => i.productId);
     const products = await Product.find({ _id: { $in: ids }, isActive: true }).lean();
-    const byId = new Map(products.map(p => [String(p._id), p]));
+    const byId = new Map(products.map((p) => [String(p._id), p]));
 
     let subtotal = 0;
     const orderItems = [];
@@ -74,47 +75,43 @@ router.post("/", optionalAuth, async (req, res, next) => {
       tax,
       total,
       paymentMethod: "COD",
-      isPaid: false,        
-      status: "pending",    
+      isPaid: false,
+      status: "pending",
     });
 
-    return res.status(201).json({ ok: true, id: order._id });
+    res.status(201).json({ ok: true, id: order._id });
   } catch (e) {
     next(e);
   }
 });
 
-
 router.get("/admin", requireAuth, requireAdmin, async (req, res, next) => {
   try {
-    const page     = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || "20", 10), 1), 100);
-    const status   = (req.query.status || "").trim();
-    const q        = (req.query.q || "").trim();
+    const status = (req.query.status || "").trim();
+    const q = (req.query.q || "").trim();
 
     const filter = {};
     if (status) filter.status = status;
     if (q) {
       filter.$or = [
-        { "buyer.email":    new RegExp(q, "i") },
-        { "buyer.phone":    new RegExp(q, "i") },
+        { "buyer.email": new RegExp(q, "i") },
+        { "buyer.phone": new RegExp(q, "i") },
         { "buyer.fullName": new RegExp(q, "i") },
       ];
     }
 
     const [rows, total] = await Promise.all([
-      Order.find(filter)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * pageSize)
-        .limit(pageSize)
-        .lean(),
+      Order.find(filter).sort({ createdAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
       Order.countDocuments(filter),
     ]);
 
     res.json({ rows, total, page, pageSize });
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 });
-
 
 router.get("/admin/:id", requireAuth, requireAdmin, async (req, res, next) => {
   try {
@@ -123,6 +120,34 @@ router.get("/admin/:id", requireAuth, requireAdmin, async (req, res, next) => {
       .lean();
     if (!row) return res.status(404).json({ error: { message: "Not found" } });
     res.json(row);
+  } catch (e) {
+    next(e);
+  }
+});
+router.delete("/admin/:id", requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const row = await Order.findByIdAndDelete(req.params.id);
+    if (!row) return res.status(404).json({ error: { message: "Order not found" } });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// put near the other /admin routes
+router.patch("/admin/:id/status", requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const raw = String(req.body?.status || "").trim().toLowerCase();
+    const alias = { recieved:"received", shipped:"shipping", confirm:"confirmed" };
+    const status = alias[raw] || raw;
+    const ALLOWED = ["pending","received","confirmed","shipping","completed","canceled"];
+    if (!ALLOWED.includes(status)) return res.status(400).json({ error:{ message:"Invalid status" } });
+
+    const row = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new:true, runValidators:true }
+    ).lean();
+    if (!row) return res.status(404).json({ error:{ message:"Not found" } });
+    res.json({ ok:true, status: row.status });
   } catch (e) { next(e); }
 });
 

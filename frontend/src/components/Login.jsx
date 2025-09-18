@@ -9,7 +9,7 @@ const ACCENT = "#f42c37";
 export default function Login() {
   const nav = useNavigate();
   const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("admin123");
+  const [password, setPassword] = useState("ChangeMeNow!123");
   const [showPw, setShowPw] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,12 +20,26 @@ export default function Login() {
     setLoading(true);
     try {
       const data = await api("/api/auth/login", {
+        method: "POST",
         body: { email, password },
       });
-      auth.loginSuccess(data); // expects { token, user }
+
+      if (!data?.token || !data?.user) {
+        throw new Error("Unexpected response from server");
+      }
+
+      // Save token and user in auth context/localStorage
+      auth.loginSuccess(data);
+
+      // Navigate to admin dashboard
       nav("/admin", { replace: true });
     } catch (e) {
-      setErr(e?.data?.error || "Invalid email or password");
+      console.error("Login error:", e);
+      setErr(
+        e?.data?.error ||
+          e?.message ||
+          "Invalid email or password"
+      );
     } finally {
       setLoading(false);
     }
@@ -35,9 +49,12 @@ export default function Login() {
     <div className="container mx-auto px-4">
       <div
         className="overflow-hidden rounded-3xl min-h-[550px] sm:min-h-[650px] flex items-stretch mt-8 bg-white dark:bg-gray-900"
-        style={{ backgroundImage: "linear-gradient(135deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02))" }}
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02))",
+        }}
       >
-        {/* Left panel (intro) */}
+        {/* Left panel */}
         <div className="hidden md:flex flex-1 items-center justify-center relative bg-[rgba(0,0,0,0.04)] dark:bg-[rgba(255,255,255,0.04)]">
           <div className="text-center text-gray-900 dark:text-gray-100 px-8 max-w-md">
             <p className="text-sm opacity-90 mb-2">Welcome back</p>
@@ -49,7 +66,9 @@ export default function Login() {
               className="mt-6 bg-white dark:bg-gray-100 py-2 px-5 rounded-full text-sm shadow"
               style={{ color: ACCENT }}
               onClick={() =>
-                document.getElementById("login-form")?.scrollIntoView({ behavior: "smooth" })
+                document
+                  .getElementById("login-form")
+                  ?.scrollIntoView({ behavior: "smooth" })
               }
             >
               Continue to Sign In
@@ -71,7 +90,9 @@ export default function Login() {
 
             <form id="login-form" onSubmit={submit} className="grid gap-4">
               <label className="grid gap-1">
-                <span className="text-xs text-gray-600 dark:text-gray-300">Email</span>
+                <span className="text-xs text-gray-600 dark:text-gray-300">
+                  Email
+                </span>
                 <input
                   className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   style={{ outlineColor: ACCENT }}
@@ -83,7 +104,9 @@ export default function Login() {
               </label>
 
               <label className="grid gap-1">
-                <span className="text-xs text-gray-600 dark:text-gray-300">Password</span>
+                <span className="text-xs text-gray-600 dark:text-gray-300">
+                  Password
+                </span>
                 <div className="relative">
                   <input
                     className="w-full border rounded-lg px-3 py-2 pr-10 focus:outline-none focus:ring-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"

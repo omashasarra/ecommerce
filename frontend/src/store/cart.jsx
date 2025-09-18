@@ -39,9 +39,12 @@ export function CartProvider({ children }) {
   const remove = React.useCallback((id) => setItems(prev => prev.filter(it => it.id !== id)), []);
   const clear  = React.useCallback(() => setItems([]), []);
   const subtotal = items.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 0), 0);
+  const count    = items.reduce((s, it) => s + Number(it.qty || 0), 0);
 
-  const value = React.useMemo(() => ({ items, add, setQty, remove, clear, subtotal }),
-    [items, add, setQty, remove, clear, subtotal]);
+     const value = React.useMemo(
+   () => ({ items, add, setQty, remove, clear, subtotal, count }),
+   [items, add, setQty, remove, clear, subtotal, count]
+ );
 
   // No JSX:
   return React.createElement(Ctx.Provider, { value }, children);

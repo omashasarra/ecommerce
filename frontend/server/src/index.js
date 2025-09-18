@@ -14,6 +14,7 @@ import apiRouter from "./routes/index.js";
 import blogsRouter from "./routes/blogs.js";
 import { notFound, errorHandler } from "./middleware/error.js";
 
+
 // Resolve __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
