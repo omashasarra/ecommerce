@@ -1,12 +1,12 @@
 // src/routes/AdminRoute.jsx
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { auth } from "../shared/auth";
-import { api } from "../shared/api";
+import { adminAuth as auth } from "../shared/adminAuth.js";
+import { adminApi as api } from "../shared/api";
 
 export default function AdminRoute({ children }) {
   // if we already have a user in memory/localStorage, we can render immediately
-  const [ready, setReady] = React.useState(!!auth.user);
+  const [ready, setReady] = React.useState(!!auth.admin);
   const [allowed, setAllowed] = React.useState(auth.isAdmin());
 
   React.useEffect(() => {
@@ -21,12 +21,12 @@ export default function AdminRoute({ children }) {
         }
 
         // if user isn’t loaded yet (typical after hard refresh), fetch it
-        if (!auth.user) {
+        if (!auth.admin) {
           const me = await api("/api/auth/me"); // must return the current user
           if (cancelled) return;
           // set user on the auth singleton (support both patterns)
-          if (typeof auth.setUser === "function") auth.setUser(me);
-          else auth.user = me;
+          if (typeof auth.setAdmin === "function") auth.setAdmin(me.user || me);
+          else auth.admin = me.user || me;
         }
 
         setAllowed(auth.isAdmin());
@@ -43,7 +43,7 @@ export default function AdminRoute({ children }) {
       }
     }
 
-    if (!auth.user) hydrate();
+    if (!auth.admin) hydrate();
     else setReady(true);
 
     return () => { cancelled = true; };

@@ -1,25 +1,33 @@
 import { Router } from "express";
+import multer from "multer";
 import {
-  adminList, adminGetOne, adminCreate, adminUpdate, adminRemove,
   publicList,
+  adminCreate,
+  createBooking,
+  myBookings,
+  adminListBookings,
+  adminUpdateBooking,
+  adminDeleteBooking,
 } from "../controllers/service.controller.js";
 import { requireAuth, requireAdmin } from "../middleware/requireAuth.js";
 
-console.log("[services] router file loaded"); // debug
-
 const router = Router();
 
-// quick ping so we can prove this router is mounted
-router.get("/__ping", (_req, res) => res.json({ ok: true, scope: "servicesRouter" }));
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "public/services"),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+});
+const uploadService = multer({ storage });
 
-// ADMIN (before "/:id")
-router.get("/admin",       requireAuth, requireAdmin, adminList);
-router.get("/admin/:id",   requireAuth, requireAdmin, adminGetOne);
-router.post("/admin",      requireAuth, requireAdmin, adminCreate);
-router.put("/admin/:id",   requireAuth, requireAdmin, adminUpdate);
-router.delete("/admin/:id",requireAuth, requireAdmin, adminRemove);
-
-// PUBLIC
 router.get("/", publicList);
+
+router.post("/book", requireAuth, createBooking); 
+router.get("/my", requireAuth, myBookings);       
+
+router.post("/admin", requireAuth, requireAdmin, uploadService.single("image"), adminCreate);
+router.get("/admin/bookings", requireAuth, requireAdmin, adminListBookings);
+router.patch("/admin/bookings/:id", requireAuth, requireAdmin, adminUpdateBooking);
+
+router.delete("/admin/bookings/:id", requireAuth, adminDeleteBooking);
 
 export default router;

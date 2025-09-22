@@ -1,24 +1,23 @@
 // server/scripts/seed-admin.js  (ESM)
-import 'dotenv/config';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { User } from '../src/models/User.js'; // keep if it's a named export
+import { User } from '../src/models/User.js'; // adjust path if needed
 
 async function main() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error('Missing MONGODB_URI');
+  // 🔹 Force DB connection directly to "services"
+  const uri = "mongodb://127.0.0.1:27017/services";
 
-  const ROUNDS = Number(process.env.BCRYPT_ROUNDS ?? 12);
-  const email = (process.env.ADMIN_EMAIL ?? 'admin@example.com').toLowerCase();
-  const name  = process.env.ADMIN_NAME  ?? 'Admin';
-  const pass  = process.env.ADMIN_PASSWORD ?? 'ChangeMeNow!123';
-  const reset = String(process.env.RESET_ADMIN_PASSWORD ?? 'true').toLowerCase() === 'true';
+  const ROUNDS = 12; // bcrypt rounds
+  const email = "admin@example.com";
+  const name  = "Admin";
+  const pass  = "ChangeMeNow!123";
+  const reset = true; // always reset password on re-run
 
-  console.log('Seeding into:', uri);
+  console.log("Seeding into:", uri);
   await mongoose.connect(uri);
 
-  // Include passwordHash if your schema uses select:false
-  let user = await User.findOne({ email }).select('+passwordHash');
+  // Include passwordHash if schema uses select:false
+  let user = await User.findOne({ email }).select("+passwordHash");
 
   if (!user) {
     const passwordHash = await bcrypt.hash(pass, ROUNDS);
@@ -26,27 +25,30 @@ async function main() {
       email,
       name,
       passwordHash,
-      role: 'admin',
+      role: "admin",
       isAdmin: true,
-      status: 'active',
+      status: "active",
     });
-    console.log('✅ Admin created:', email);
+    console.log("✅ Admin created:", email);
   } else {
     const update = {
       name,
-      role: 'admin',
+      role: "admin",
       isAdmin: true,
-      status: user.status ?? 'active',
+      status: user.status ?? "active",
     };
     if (reset) {
       update.passwordHash = await bcrypt.hash(pass, ROUNDS);
-      console.log('🔑 Admin password reset');
+      console.log("🔑 Admin password reset");
     }
     await User.updateOne({ _id: user._id }, { $set: update });
-    console.log('✅ Admin ensured:', email);
+    console.log("✅ Admin ensured:", email);
   }
 
   await mongoose.disconnect();
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

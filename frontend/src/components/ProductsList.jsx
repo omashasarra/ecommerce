@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../shared/api';
-import { auth } from '../shared/auth';
+import { adminAuth as auth } from "../shared/adminAuth.js";
 
 export default function ProductsList() {
   const [items, setItems] = useState([]);

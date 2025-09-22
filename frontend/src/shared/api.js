@@ -1,25 +1,30 @@
 // src/shared/api.js
-import { auth } from "./auth";
+import { userAuth } from "./userAuth.js";
+import { adminAuth } from "./adminAuth.js";
 
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
-export async function api(path, opts = {}) {
+/**
+ * Core API helper
+ */
+async function baseApi(path, opts = {}, token) {
   const hasBody = opts.body !== undefined && opts.body !== null;
   const method = opts.method || (hasBody ? "POST" : "GET");
 
   const headers = { ...(opts.headers || {}) };
-
-  // If body is a plain object → JSON encode.
-  // If it's FormData → DO NOT set Content-Type (browser will add boundary).
   let body = opts.body;
-  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
+  // JSON encode plain objects, but skip for FormData
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
   if (hasBody && !isFormData && typeof body === "object") {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(body);
   }
 
-  if (auth.token) {
-    headers.Authorization = `Bearer ${auth.token}`;
+  // Attach Authorization header
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const res = await fetch(`${BASE}${path}`, {
@@ -42,7 +47,15 @@ export async function api(path, opts = {}) {
 }
 
 function safeParseJSON(t) {
-  try { return JSON.parse(t); } catch { return t; }
+  try {
+    return JSON.parse(t);
+  } catch {
+    return t;
+  }
 }
 
-export default api;
+export const userApi = (path, opts = {}) =>
+  baseApi(path, opts, userAuth.token);
+
+export const adminApi = (path, opts = {}) =>
+  baseApi(path, opts, adminAuth.token);

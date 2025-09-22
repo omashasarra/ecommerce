@@ -1,24 +1,49 @@
-import "dotenv/config";
+// server/scripts/seedServices.js
+import "dotenv/config.js";
 import mongoose from "mongoose";
-import { ServiceFeature } from "../src/models/ServiceFeature.js";
+import { Service } from "../src/models/Service.js";
 
-const MONGO_URL = process.env.MONGO_URL || "mongodb://127.0.0.1:27017/e-commerce";
-const KEEP = process.env.KEEP === "1";
+const MONGO_URL =
+  process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/services";
 
 async function run() {
-  await mongoose.connect(MONGO_URL);
-  if (!KEEP) await ServiceFeature.deleteMany({});
+  try {
+    await mongoose.connect(MONGO_URL);
+    console.log("✅ Connected:", MONGO_URL);
 
-  await ServiceFeature.insertMany([
-    { title: "Free Shipping",       description: "Free shipping on all orders",     iconKey: "car",        order: 1, isActive: true },
-    { title: "Safe Money",          description: "30 days money back",              iconKey: "check",      order: 2, isActive: true },
-    { title: "Secure Payment",      description: "All payments are secure",         iconKey: "wallet",     order: 3, isActive: true },
-    { title: "Online Support 24/7", description: "Technical support 24/7",          iconKey: "headphones", order: 4, isActive: true },
-  ]);
+    await Service.deleteMany({});
+    console.log("🗑️ Old services cleared");
 
-  console.log("Seeded services");
-  await mongoose.disconnect();
-  process.exit(0);
+    const services = [
+      {
+        title: "Plumbing",
+        description: "Fix leaks, install pipes, and bathroom repairs.",
+        pricePerHour: 25,
+        image: "https://picsum.photos/seed/plumbing/600/400",
+      },
+      {
+        title: "Carpentry",
+        description: "Furniture making and wood repairs.",
+        pricePerHour: 30,
+        image: "https://picsum.photos/seed/carpentry/600/400",
+      },
+      {
+        title: "Electrical",
+        description: "Wiring, lighting, and appliance repairs.",
+        pricePerHour: 35,
+        image: "https://picsum.photos/seed/electrical/600/400",
+      },
+    ];
+
+    await Service.insertMany(services);
+    console.log(`🎉 Seeded ${services.length} services`);
+
+    await mongoose.disconnect();
+    process.exit(0);
+  } catch (err) {
+    console.error("❌ Seed error:", err);
+    process.exit(1);
+  }
 }
 
-run().catch(e => { console.error(e); process.exit(1); });
+run();

@@ -1,5 +1,5 @@
 import React from "react";
-import api from "../shared/api";
+import { adminApi as api } from "../shared/api"; // ✅ use adminApi only
 
 function Field({ label, children }) {
   return (
@@ -133,20 +133,22 @@ function Modal({ title, children, onClose, width = "w-[600px]" }) {
 }
 
 function CategoryForm({ initial, onSave, onCancel }) {
-  const defaultForm = React.useMemo(() => ({
-    title: "",
-    subtitleTop: "Enjoy",
-    subtitleMid: "With",
-    buttonLabel: "Browse",
-    imageUrl: "",
-  }), []);
+  const defaultForm = React.useMemo(
+    () => ({
+      title: "",
+      subtitleTop: "Enjoy",
+      subtitleMid: "With",
+      buttonLabel: "Browse",
+      imageUrl: "",
+    }),
+    []
+  );
 
   const [form, setForm] = React.useState(initial || defaultForm);
   const [imageFile, setImageFile] = React.useState(null);
   const [uploading, setUploading] = React.useState(false);
   const [err, setErr] = React.useState("");
 
-  // keep form in sync when opening/closing modal or switching rows
   React.useEffect(() => {
     setForm(initial || defaultForm);
     setImageFile(null);
@@ -158,15 +160,14 @@ function CategoryForm({ initial, onSave, onCancel }) {
     setForm((f) => ({ ...f, [name]: value }));
   }
 
-  // ⇩⇩ THIS is the upload helper that uses your shared api()
+  // ✅ upload uses adminApi
   async function uploadImage(file) {
     const fd = new FormData();
-    fd.append("image", file); // field name must be "image" to match backend multer
+    fd.append("image", file);
     const data = await api("/api/categories/admin/upload", {
       method: "POST",
       body: fd,
     });
-    // backend returns { filename, url }
     return data;
   }
 
@@ -176,14 +177,11 @@ function CategoryForm({ initial, onSave, onCancel }) {
 
     try {
       let payload = { ...form };
-
       if (imageFile) {
         setUploading(true);
-        const { filename, url } = await uploadImage(imageFile);
-        // Keep using imageUrl in admin to avoid breaking other pages
-        payload.imageUrl = url; // you can switch to filename later if you decide
+        const { url } = await uploadImage(imageFile);
+        payload.imageUrl = url;
       }
-
       await onSave(payload);
     } catch (ex) {
       setErr(ex.message || "Save Failed");
@@ -227,7 +225,6 @@ function CategoryForm({ initial, onSave, onCancel }) {
         />
       </Field>
 
-      {/* Image URL (optional; kept so other pages remain unchanged) */}
       <Field label="Image URL (optional)">
         <TextInput
           value={form.imageUrl}
@@ -236,7 +233,6 @@ function CategoryForm({ initial, onSave, onCancel }) {
         />
       </Field>
 
-      {/* Desktop upload */}
       <Field label="Upload Image">
         <div className="flex items-center gap-3">
           <input
@@ -244,7 +240,7 @@ function CategoryForm({ initial, onSave, onCancel }) {
             accept="image/*"
             onChange={(e) => setImageFile(e.target.files?.[0] || null)}
           />
-          {(form.imageUrl || imageFile) ? (
+          {form.imageUrl || imageFile ? (
             <img
               src={imageFile ? URL.createObjectURL(imageFile) : form.imageUrl}
               alt="preview"
@@ -310,14 +306,13 @@ export default function AdminCategories() {
 
   React.useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize, search, sortBy, sortDir]);
 
   async function save(form) {
     if (editing) {
       const updated = await api(`/api/categories/admin/${editing._id}`, {
         method: "PUT",
-        body: form,      // api() will JSON-encode plain objects
+        body: form,
       });
       setRows((prev) => prev.map((r) => (r._id === updated._id ? updated : r)));
       setEditing(null);
@@ -344,7 +339,6 @@ export default function AdminCategories() {
     <div className="p-4 text-gray-900 dark:text-slate-100">
       <h1 className="text-xl font-semibold mb-4">Categories</h1>
 
-      {/* Top bar */}
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
         <TextInput
           placeholder="Search by title…"
@@ -358,12 +352,10 @@ export default function AdminCategories() {
         <SoftButton onClick={() => setCreating(true)}>New</SoftButton>
       </div>
 
-      {/* Errors */}
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
       )}
 
-      {/* Table */}
       {loading ? (
         <Card className="p-4 text-sm">Loading…</Card>
       ) : (
@@ -409,10 +401,7 @@ export default function AdminCategories() {
                       : "-"}
                   </td>
                   <td className="p-2 align-middle text-right">
-                    <GhostButton
-                      className="mr-2"
-                      onClick={() => setEditing(r)}
-                    >
+                    <GhostButton className="mr-2" onClick={() => setEditing(r)}>
                       Edit
                     </GhostButton>
                     <DangerButton onClick={() => remove(r._id)}>
@@ -435,7 +424,6 @@ export default function AdminCategories() {
         </Card>
       )}
 
-      {/* Footer controls */}
       <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between mt-3">
         <div className="flex items-center gap-2">
           <span className="text-sm">Rows:</span>
@@ -483,7 +471,6 @@ export default function AdminCategories() {
         </div>
       </div>
 
-      {/* dialogs */}
       {creating && (
         <Modal title="New Category" onClose={() => setCreating(false)}>
           <CategoryForm

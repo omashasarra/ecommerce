@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../shared/auth';
+import { adminAuth as auth } from "../shared/adminAuth.js";
 import Sidebar from '../admin/Sidebar.jsx';
 import BlockList from '../admin/BlockList.jsx';
 import AdminBlogs from '../admin/AdminBlogs.jsx';
@@ -12,9 +12,10 @@ import AdminPartners from '../admin/AdminPartners.jsx';
 import AdminBanners from '../admin/AdminBanners.jsx';
 import AdminProduct from '../admin/AdminProduct.jsx';
 import AdminOrders from '../admin/AdminOrders.jsx'; 
+import AdminBookings from '../admin/AdminBookings.jsx';   
 
 const TYPES = [
-  'Orders', 'Banner', 'Blog', 'Category', 'Footer', 'Hero', 'Partners', 'Products', 'Services'
+  'Orders', 'Bookings', 'Banner', 'Blog', 'Category', 'Footer', 'Hero', 'Partners', 'Products', 'Services'
 ];
 
 export default function AdminDashboard() {
@@ -60,7 +61,9 @@ export default function AdminDashboard() {
 
         {/* Content */}
         { active === 'Orders' ? (
-          <AdminOrders />                          
+          <AdminOrders />
+        ) : active === 'Bookings' ? (
+          <AdminBookings />                          
         ) : active === 'Banner' ? (
           <AdminBanners />
         ) :  active === 'Blog' ? (

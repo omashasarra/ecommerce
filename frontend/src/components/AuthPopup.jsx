@@ -1,7 +1,7 @@
 import React from "react";
 import { IoCloseOutline } from "react-icons/io5";
 import api from "../shared/api";
-import { auth } from "../shared/auth";
+import { adminAuth as auth } from "../shared/adminAuth.js";
 
 export default function AuthPopup({ open, onClose, defaultTab = "signup" }) {
   const [mode, setMode] = React.useState(defaultTab); // "signup" | "login"

@@ -1,6 +1,6 @@
 // client/src/admin/AdminProduct.jsx
 import React from "react";
-import api from "../shared/api"; // JSON helper
+import { adminApi as api } from "../shared/api"; // ✅ use adminApi
 
 // ---------- Module constants (stable across renders) ----------
 const EMPTY_PRODUCT = {
@@ -27,12 +27,11 @@ function Field({ label, children }) {
 }
 
 // --- Safe inputs: never switch to uncontrolled ---
-
 function TextInput({ value, className = "", ...rest }) {
   return (
     <input
       {...rest}
-      value={value ?? ""}              // 👈 key line
+      value={value ?? ""}
       className={[
         "w-full rounded px-3 py-2",
         "border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500",
@@ -47,7 +46,7 @@ function TextArea({ value, className = "", ...rest }) {
   return (
     <textarea
       {...rest}
-      value={value ?? ""}              // 👈 key line
+      value={value ?? ""}
       className={[
         "w-full rounded px-3 py-2",
         "border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500",
@@ -62,7 +61,7 @@ function SelectInput({ value, className = "", ...rest }) {
   return (
     <select
       {...rest}
-      value={value ?? ""}             
+      value={value ?? ""}
       className={[
         "rounded px-2 py-1",
         "border border-gray-300 bg-white text-gray-900",
@@ -72,7 +71,6 @@ function SelectInput({ value, className = "", ...rest }) {
     />
   );
 }
-
 
 function SoftButton({ children, className = "", ...rest }) {
   return (
@@ -154,26 +152,27 @@ function ProductForm({ initial, onSave, onCancel }) {
     setForm((f) => ({ ...f, [name]: value }));
   }
 
-async function uploadImage(file) {
-  const fd = new FormData();
-  fd.append("image", file);
+  async function uploadImage(file) {
+    const fd = new FormData();
+    fd.append("image", file);
 
-  const token =
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    sessionStorage.getItem("token");
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("accessToken") ||
+      sessionStorage.getItem("token");
 
-  const res = await fetch("/api/products/admin/upload", {
-    method: "POST",
-    credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    body: fd,
-  });
+    const res = await fetch("/api/products/admin/upload", {
+      method: "POST",
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: fd,
+    });
 
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();           
-  setForm(f => ({ ...f, imageURL: data.url })); 
-}
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    setForm((f) => ({ ...f, imageURL: data.url }));
+  }
+
   async function onPickFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -217,7 +216,6 @@ async function uploadImage(file) {
           <TextInput value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="Boat Headphone" />
         </Field>
 
-        {/* Keep the old URL box for flexibility */}
         <Field label="Image URL">
           <TextInput
             value={form.imageURL}

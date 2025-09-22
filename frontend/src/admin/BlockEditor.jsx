@@ -1,7 +1,6 @@
 import React from 'react';
-import { api } from '../shared/api';
+import { adminApi as api } from "../shared/api";
 
-// Minimal field presets per type. Adjust/extend anytime.
 const PRESETS = {
   Banner: ['key','title','image','order','isActive'],
   Blog: ['key','title','content','order','isActive'],

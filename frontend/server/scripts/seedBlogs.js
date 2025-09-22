@@ -1,10 +1,8 @@
-// scripts/seedBlogs.js
-import "dotenv/config.js";
+// scripts/seed-blogs.js
 import mongoose from "mongoose";
 import { Blog } from "../src/models/Blog.js";
 
-const MONGO_URL =
-  process.env.MONGO_URL || "mongodb://127.0.0.1:27017/e-commerce";
+const MONGO_URL = "mongodb://127.0.0.1:27017/services"; // force services DB
 
 async function run() {
   try {
@@ -62,7 +60,7 @@ async function run() {
     ];
 
     await Blog.insertMany(blogs);
-    console.log(`🎉 Seeded ${blogs.length} blogs`);
+    console.log(`🎉 Seeded ${blogs.length} blogs into 'services' DB`);
 
     await mongoose.disconnect();
     process.exit(0);

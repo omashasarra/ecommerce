@@ -1,22 +1,14 @@
-// scripts/seedHeroSlides.js
-import "dotenv/config.js";
+// scripts/seed-hero-slides.js
 import mongoose from "mongoose";
 import { HeroSlide } from "../src/models/HeroSlide.js";
 
-const MONGO_URL = process.env.MONGO_URL || "mongodb://127.0.0.1:27017/e-commerce";
-const KEEP_EXISTING = process.env.KEEP === "1";
+const MONGO_URL = "mongodb://127.0.0.1:27017/services"; // force services DB
+const KEEP_EXISTING = false; // set true if you want to keep existing slides
 
 async function run() {
   try {
     await mongoose.connect(MONGO_URL, { serverSelectionTimeoutMS: 5000 });
     console.log("✅ Connected to MongoDB:", MONGO_URL);
-
-    if (!KEEP_EXISTING) {
-      await HeroSlide.deleteMany({});
-      console.log("🗑️  Old hero slides cleared");
-    } else {
-      console.log("↪️  KEEP=1 → keeping existing slides (upsert only new)");
-    }
 
     const slides = [
       {
@@ -42,7 +34,7 @@ async function run() {
         title: "Branded",
         title2: "Laptops",
         img: "/category/macbook.png",
-        buttonLabel: "Shop By category",
+        buttonLabel: "Shop By Category",
         order: 3,
         isActive: true,
       },
@@ -52,12 +44,18 @@ async function run() {
       let created = 0;
       for (const s of slides) {
         const found = await HeroSlide.findOne({ title: s.title, title2: s.title2 }).lean();
-        if (!found) { await HeroSlide.create(s); created++; }
+        if (!found) {
+          await HeroSlide.create(s);
+          created++;
+        }
       }
-      console.log(`📦 Upsert mode (KEEP=1): inserted ${created} new slides`);
+      console.log(`📦 Upsert mode (KEEP_EXISTING=true): inserted ${created} new slides`);
     } else {
+      await HeroSlide.deleteMany({});
+      console.log("🗑️ Old hero slides cleared");
+
       await HeroSlide.insertMany(slides);
-      console.log(`🎉 Seeded ${slides.length} hero slides`);
+      console.log(`🎉 Seeded ${slides.length} hero slides into 'services' DB`);
     }
 
     await mongoose.disconnect();

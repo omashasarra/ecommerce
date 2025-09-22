@@ -1,7 +1,7 @@
+// src/pages/admin/AdminHero.jsx
 import React from "react";
-import api from "../shared/api";
+import { adminApi as api } from "../shared/api"; 
 
-/* ---------- UI helpers (dark-mode aware) ---------- */
 function Field({ label, children }) {
   return (
     <label className="block mb-3">
@@ -156,7 +156,7 @@ function HeroForm({ initial, onSave, onCancel }) {
     }
   );
 
-  // NEW: local file + preview (no URL field anymore)
+  // local file + preview
   const [file, setFile] = React.useState(null);
   const [preview, setPreview] = React.useState(initial?.img ? toAbsolute(initial.img) : "");
   const [err, setErr] = React.useState("");
@@ -180,7 +180,7 @@ function HeroForm({ initial, onSave, onCancel }) {
         if (v === null || v === undefined) continue;
         fd.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
       }
-      if (file) fd.append("img", file); // field name must match backend uploader
+      if (file) fd.append("img", file);
 
       await onSave(fd);
     } catch (ex) {
@@ -224,7 +224,6 @@ function HeroForm({ initial, onSave, onCancel }) {
         />
       </Field>
 
-      {/* ✅ Image upload from desktop (replaces URL input) */}
       <Field label="Hero Image (upload from desktop)">
         <div className="space-y-2">
           {preview ? (
@@ -398,7 +397,6 @@ export default function AdminHero() {
         </Card>
       )}
 
-      {/* dialogs */}
       {creating && (
         <Modal title="New Slide" onClose={() => setCreating(false)}>
           <HeroForm initial={null} onSave={save} onCancel={() => setCreating(false)} />

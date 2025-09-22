@@ -1,7 +1,7 @@
 import React from "react";
 import Heading from "../Shared/Heading";
 import { ProductCard } from "./ProductCard";
-import api from "../../shared/api"; 
+import { userApi as api } from "../../shared/api";
 
 const Products = () => {
   const [items, setItems] = React.useState([]);

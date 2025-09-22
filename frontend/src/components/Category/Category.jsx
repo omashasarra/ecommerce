@@ -1,6 +1,7 @@
 import React from "react";
 import Button from "../Shared/Button";
-import api from "../../shared/api";
+import { userApi as api } from "../../shared/api";
+
 
 const resolveCategoryImage = (image) => {
   if (!image) return "";

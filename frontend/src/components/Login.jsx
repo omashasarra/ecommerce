@@ -1,15 +1,17 @@
-// src/components/Login.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../shared/api";
-import { auth } from "../shared/auth";
+import { userApi } from "../shared/api"; 
+import { userAuth } from "../shared/userAuth.js";
+import { adminAuth } from "../shared/adminAuth.js";
 
 const ACCENT = "#f42c37";
 
 export default function Login() {
   const nav = useNavigate();
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("ChangeMeNow!123");
+  const [mode, setMode] = useState("login"); 
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,28 +20,36 @@ export default function Login() {
     e.preventDefault();
     setErr("");
     setLoading(true);
+
     try {
-      const data = await api("/api/auth/login", {
-        method: "POST",
-        body: { email, password },
-      });
+      if (mode === "login") {
+        const data = await userApi("/api/auth/login", {
+          method: "POST",
+          body: { email, password },
+        });
+        if (!data?.token || !data?.user) throw new Error("Unexpected response");
 
-      if (!data?.token || !data?.user) {
-        throw new Error("Unexpected response from server");
+        // Save into the right store
+        if (data.user.role?.toLowerCase() === "admin") {
+          adminAuth.loginSuccess(data);
+          nav("/admin", { replace: true });
+        } else {
+          userAuth.loginSuccess(data);
+          nav("/", { replace: true });
+        }
+      } else {
+        // Signup only for users
+        const data = await userApi("/api/auth/signup", {
+          method: "POST",
+          body: { email, name, password },
+        });
+        if (!data?.user) throw new Error("Unexpected response");
+        userAuth.loginSuccess(data);
+        nav("/", { replace: true });
       }
-
-      // Save token and user in auth context/localStorage
-      auth.loginSuccess(data);
-
-      // Navigate to admin dashboard
-      nav("/admin", { replace: true });
     } catch (e) {
-      console.error("Login error:", e);
-      setErr(
-        e?.data?.error ||
-          e?.message ||
-          "Invalid email or password"
-      );
+      console.error("Auth error:", e);
+      setErr(e?.data?.error?.message || e?.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -48,51 +58,55 @@ export default function Login() {
   return (
     <div className="container mx-auto px-4">
       <div
-        className="overflow-hidden rounded-3xl min-h-[550px] sm:min-h-[650px] flex items-stretch mt-8 bg-white dark:bg-gray-900"
+        className="overflow-hidden rounded-3xl min-h-[600px] flex items-stretch mt-8 bg-white dark:bg-gray-900 shadow-xl"
         style={{
           backgroundImage:
             "linear-gradient(135deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02))",
         }}
       >
-        {/* Left panel */}
-        <div className="hidden md:flex flex-1 items-center justify-center relative bg-[rgba(0,0,0,0.04)] dark:bg-[rgba(255,255,255,0.04)]">
-          <div className="text-center text-gray-900 dark:text-gray-100 px-8 max-w-md">
-            <p className="text-sm opacity-90 mb-2">Welcome back</p>
-            <h1 className="uppercase text-4xl md:text-5xl font-bold drop-shadow">
-              Admin Login
+        <div className="hidden md:flex flex-1 items-center justify-center bg-gradient-to-br from-red-500 to-pink-500 text-white p-10">
+          <div className="max-w-md space-y-4">
+            <h1 className="text-4xl font-bold drop-shadow">
+              {mode === "login" ? "Welcome Back!" : "Join Us Today"}
             </h1>
-            <button
-              type="button"
-              className="mt-6 bg-white dark:bg-gray-100 py-2 px-5 rounded-full text-sm shadow"
-              style={{ color: ACCENT }}
-              onClick={() =>
-                document
-                  .getElementById("login-form")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              Continue to Sign In
-            </button>
+            <p className="opacity-90 leading-relaxed">
+              {mode === "login"
+                ? ""
+                : "Create your account to start exploring our platform."}
+            </p>
           </div>
         </div>
 
-        {/* Right panel (form) */}
-        <div className="flex-1 bg-white dark:bg-gray-900 flex items-center justify-center p-6 sm:p-10">
+        <div className="flex-1 flex items-center justify-center p-8 sm:p-12">
           <div className="w-full max-w-md">
-            <div className="mb-6">
+            <div className="mb-6 text-center">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Sign in to your account
+                {mode === "login" ? "Sign in to your account" : "Create a new account"}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Use your admin credentials to access the dashboard.
+                {mode === "login"
+                  ? "Use your credentials to access the dashboard."
+                  : "Fill in your details to get started."}
               </p>
             </div>
 
-            <form id="login-form" onSubmit={submit} className="grid gap-4">
+            <form onSubmit={submit} className="grid gap-4">
+              {mode === "signup" && (
+                <label className="grid gap-1">
+                  <span className="text-xs text-gray-600 dark:text-gray-300">Name</span>
+                  <input
+                    className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    style={{ outlineColor: ACCENT }}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    type="text"
+                    required
+                  />
+                </label>
+              )}
+
               <label className="grid gap-1">
-                <span className="text-xs text-gray-600 dark:text-gray-300">
-                  Email
-                </span>
+                <span className="text-xs text-gray-600 dark:text-gray-300">Email</span>
                 <input
                   className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   style={{ outlineColor: ACCENT }}
@@ -104,9 +118,7 @@ export default function Login() {
               </label>
 
               <label className="grid gap-1">
-                <span className="text-xs text-gray-600 dark:text-gray-300">
-                  Password
-                </span>
+                <span className="text-xs text-gray-600 dark:text-gray-300">Password</span>
                 <div className="relative">
                   <input
                     className="w-full border rounded-lg px-3 py-2 pr-10 focus:outline-none focus:ring-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
@@ -136,12 +148,33 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-2 inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium text-white shadow"
+                className="mt-2 inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium text-white shadow transition hover:opacity-90"
                 style={{ backgroundColor: ACCENT }}
               >
-                {loading ? "Signing in…" : "Sign in"}
+                {loading
+                  ? mode === "login"
+                    ? "Signing in…"
+                    : "Signing up…"
+                  : mode === "login"
+                  ? "Sign In"
+                  : "Sign Up"}
               </button>
             </form>
+
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode(mode === "login" ? "signup" : "login");
+                  setErr("");
+                }}
+                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {mode === "login"
+                  ? "Don’t have an account? Sign Up"
+                  : "Already have an account? Sign In"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

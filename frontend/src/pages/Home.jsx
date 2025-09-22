@@ -2,7 +2,6 @@ import React from "react";
 import Hero from "../components/Hero/Hero";
 import Category from "../components/Category/category";
 import Category2 from "../components/Category/category2";
-import Services from "../components/Services/Services";
 import Banner from "../components/Banner/Banner";
 import Products from "../components/Products/Products";
 import Blogs from "../components/Blogs/Blogs";
@@ -52,7 +51,6 @@ export default function Home({ handleOrderPopup }) {
       <Hero handleOrderPopup={handleOrderPopup} />
       <Category />
       <Category2 />
-      <Services />
 
       {b1 && <Banner data={b1} />}
       <Products />

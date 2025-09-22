@@ -1,49 +1,143 @@
-import { ServiceFeature } from "../models/ServiceFeature.js";
+import mongoose from "mongoose";
+import { Service } from "../models/Service.js";
+import { Booking } from "../models/Booking.js";
+import { User } from "../models/User.js";
 
-export async function adminList(req, res, next) {
+export const publicList = async (req, res) => {
   try {
-    const rows = await ServiceFeature.find().sort({ order: 1, updatedAt: -1 }).lean();
-    res.json({ ok: true, rows });
-  } catch (e) { next(e); }
-}
+    const services = await Service.find({ isActive: true });
+    res.json(services);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
-export async function adminGetOne(req, res, next) {
+export const adminCreate = async (req, res) => {
   try {
-    const row = await ServiceFeature.findById(req.params.id).lean();
-    if (!row) return res.status(404).json({ ok:false, error:"Not found" });
-    res.json({ ok:true, data: row });
-  } catch (e) { next(e); }
-}
+    const { title, description, pricePerHour } = req.body;
+    const image = req.file ? `/services/${req.file.filename}` : null;
 
-export async function adminCreate(req, res, next) {
-  try {
-    const max = await ServiceFeature.findOne({}, { order:1 }).sort({ order:-1 }).lean();
-    const nextOrder = (max?.order ?? -1) + 1;
-    const created = await ServiceFeature.create({ ...req.body, order: req.body.order ?? nextOrder });
-    res.status(201).json({ ok:true, data: created });
-  } catch (e) { next(e); }
-}
+    const service = await Service.create({
+      title,
+      description,
+      image,
+      pricePerHour,
+      isActive: true,
+    });
 
-export async function adminUpdate(req, res, next) {
-  try {
-    const updated = await ServiceFeature.findByIdAndUpdate(req.params.id, req.body, { new:true });
-    if (!updated) return res.status(404).json({ ok:false, error:"Not found" });
-    res.json({ ok:true, data: updated });
-  } catch (e) { next(e); }
-}
+    res.json(service);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
 
-export async function adminRemove(req, res, next) {
+export const createBooking = async (req, res) => {
   try {
-    const removed = await ServiceFeature.findByIdAndDelete(req.params.id);
-    if (!removed) return res.status(404).json({ ok:false, error:"Not found" });
-    res.json({ ok:true, id: req.params.id });
-  } catch (e) { next(e); }
-}
+    if (!req.user) throw new Error("You must be logged in to book a service");
 
-export async function publicList(_req, res, next) {
+    const {
+      serviceId,
+      phone,
+      address1,
+      address2,
+      city,
+      state,
+      postalCode,
+      country,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+    } = req.body;
+
+    const service = await Service.findById(serviceId);
+    if (!service) throw new Error("Service not found");
+
+    const startDateTime = new Date(`${startDate}T${startTime}`);
+    const endDateTime = new Date(`${endDate}T${endTime}`);
+    if (isNaN(startDateTime) || isNaN(endDateTime)) throw new Error("Invalid date or time");
+    if (endDateTime <= startDateTime) throw new Error("Invalid booking time");
+
+    const totalHours = (endDateTime - startDateTime) / (1000 * 60 * 60);
+    const totalPrice = totalHours * service.pricePerHour;
+
+    const booking = await Booking.create({
+      user: req.user.sub, 
+      service: service._id,
+      clientName: req.user.name,
+      clientEmail: req.user.email,
+      phone,
+      address1,
+      address2,
+      city,
+      state,
+      postalCode,
+      country,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      totalHours,
+      totalPrice,
+      status: "pending",
+    });
+
+    res.json(booking);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+export const myBookings = async (req, res) => {
   try {
-    const rows = await ServiceFeature.find({ isActive: true }).sort({ order:1, createdAt:1 }).lean();
-    res.set("Cache-Control", "no-store");
-    res.json({ ok:true, rows });
-  } catch (e) { next(e); }
-}
+    const bookings = await Booking.find({ user: req.user.sub })
+      .populate("service")
+      .sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+export const adminListBookings = async (_req, res) => {
+  try {
+    const bookings = await Booking.find()
+    .populate("service")
+    .populate("user")
+    .sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const adminUpdateBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    })
+      .populate("service")
+      .populate("user");
+    if (!booking) throw new Error("Booking not found");
+    res.json(booking);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+export const adminDeleteBooking = async (req, res) => {
+  try {
+    console.log("Deleting booking with ID:", req.params.id);
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      console.log("Booking not found in DB");
+      return res.status(404).json({ error: "Booking not found" });
+    }
+    await booking.deleteOne();
+    res.json({ success: true, id: req.params.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

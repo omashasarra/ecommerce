@@ -1,8 +1,7 @@
 // src/pages/admin/AdminFooter.jsx
 import React from "react";
-import api from "../shared/api"; // your fetch wrapper (no axios)
+import { adminApi as api } from "../shared/api"; 
 
-// ---------- UI PRIMITIVES (same design as your sample) ----------
 function Field({ label, children, hint }) {
   return (
     <label className="block mb-3">
@@ -147,7 +146,7 @@ function Modal({ title, children, onClose, width = "w-[720px]" }) {
   );
 }
 
-// ---------- LINK EDITOR (for Important/Quick links) ----------
+// ---------- LINK EDITOR ----------
 function LinkRow({ value, onChange, onRemove }) {
   return (
     <div className="grid md:grid-cols-12 gap-2 items-center">
@@ -186,7 +185,6 @@ export default function AdminFooter() {
   const [error, setError] = React.useState("");
 
   const [form, setForm] = React.useState({
-    // matches your schema
     _id: undefined,
     companyName: "Eshop",
     aboutText: "",
@@ -199,12 +197,11 @@ export default function AdminFooter() {
     isActive: true,
   });
 
-  // Load current footer (singleton)
   const load = React.useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const doc = await api("/api/footer/admin"); // GET (with credentials inside your api helper)
+      const doc = await api("/api/footer/admin");
       if (doc) {
         setForm({
           _id: doc._id,
@@ -230,7 +227,6 @@ export default function AdminFooter() {
     load();
   }, [load]);
 
-  // Helpers
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const setSocial = (k, v) =>
     setForm((p) => ({ ...p, socials: { ...p.socials, [k]: v } }));
@@ -255,7 +251,6 @@ export default function AdminFooter() {
     setSaving(true);
     setError("");
     try {
-      // sanitize links: keep only rows with title OR link
       const clean = (arr) =>
         (arr || [])
           .filter((x) => (x.title || "").trim() || (x.link || "").trim())
@@ -289,7 +284,6 @@ export default function AdminFooter() {
     } finally {
       setSaving(false);
     }
-    // optional toast
     alert("Saved");
   };
 
@@ -311,9 +305,8 @@ export default function AdminFooter() {
         </Card>
       )}
 
-      {/* Main Form */}
       <form id="footer-form" onSubmit={submit}>
-        {/* Company Details */}
+        {/* Company */}
         <Card className="p-4 mb-4">
           <div className="font-medium mb-3">Company</div>
           <div className="grid md:grid-cols-2 gap-4">
@@ -406,9 +399,6 @@ export default function AdminFooter() {
                 onRemove={() => removeLink("importantLinks", i)}
               />
             ))}
-            {form.importantLinks.length === 0 && (
-              <div className="text-sm text-gray-500 dark:text-slate-400">No links</div>
-            )}
           </div>
         </Card>
 
@@ -427,9 +417,6 @@ export default function AdminFooter() {
                 onRemove={() => removeLink("quickLinks", i)}
               />
             ))}
-            {form.quickLinks.length === 0 && (
-              <div className="text-sm text-gray-500 dark:text-slate-400">No links</div>
-            )}
           </div>
         </Card>
 
@@ -447,7 +434,6 @@ export default function AdminFooter() {
           </div>
         </Card>
 
-        {/* Bottom actions (duplicate Save for convenience) */}
         <div className="flex items-center gap-2">
           <GhostButton type="button" onClick={load}>
             Reload

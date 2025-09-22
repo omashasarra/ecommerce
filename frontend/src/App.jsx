@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
-import { auth } from "./shared/auth.js";
-import { api } from "./shared/api.js";
+import { userApi, adminApi } from "./shared/api.js";  
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./store/cart.jsx";
 import { ToastProvider } from "./shared/toast.jsx";
@@ -14,26 +13,45 @@ import Login from "./components/Login.jsx";
 import Products from "./components/Products/Products";
 import Blogs from "./components/Blogs/Blogs";
 import Footer from "./components/Footer/Footer.jsx";
-import Services from "./components/Services/Services.jsx";
 import Banner from "./components/Banner/Banner.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
-import CartModal from "./components/CartModal.jsx"
+import CartModal from "./components/CartModal.jsx";
+import Services from "./components/Services.jsx";
 
 import AOS from "aos";
 import "aos/dist/aos.css";
+
 import AdminRoute from "./components/AdminRoute.jsx";
+import UserAccount from "./pages/UserAccount.jsx";
+
+import { userAuth } from "./shared/userAuth.js";
+import { adminAuth } from "./shared/adminAuth.js";
 
 const App = () => {
+  // hydrate normal user
   useEffect(() => {
-    if (!auth.token) return;
+    if (!userAuth.token) return;
     (async () => {
       try {
-        const me = await api("/api/auth/me");
-        auth.user = me;
+        const me = await userApi("/api/auth/me");  
+        userAuth.setUser(me.user || me);
       } catch (err) {
-        console.error("Failed to hydrate /auth/me:", err);
-        auth.token = null;
-        auth.user = null;
+        console.error("Failed to hydrate user /auth/me:", err);
+        userAuth.logout();
+      }
+    })();
+  }, []);
+
+  // hydrate admin
+  useEffect(() => {
+    if (!adminAuth.token) return;
+    (async () => {
+      try {
+        const me = await adminApi("/api/auth/me"); 
+        adminAuth.setUser(me.user || me);
+      } catch (err) {
+        console.error("Failed to hydrate admin /auth/me:", err);
+        adminAuth.logout();
       }
     })();
   }, []);
@@ -42,7 +60,12 @@ const App = () => {
   const handleOrderPopup = () => setOrderPopup((v) => !v);
 
   useEffect(() => {
-    AOS.init({ duration: 800, easing: "ease-in-sine", delay: 100, offset: 100 });
+    AOS.init({
+      duration: 800,
+      easing: "ease-in-sine",
+      delay: 100,
+      offset: 100,
+    });
     AOS.refresh();
   }, []);
 
@@ -63,8 +86,6 @@ const App = () => {
     return (
       <div>
         <Products />
-        <hr />
-        <Services />
         <hr />
         <Partners />
         <hr />
@@ -91,24 +112,53 @@ const App = () => {
   return (
     <div className="bg-white dark:bg-gray-900 dark:text-white *:duration-200 overflow-hidden">
       <ToastProvider>
-      <CartProvider>
-        <Router>
-          <Navbar handleOrderPopup={handleOrderPopup} />
-          <Routes>
-            <Route path="/" element={<Home handleOrderPopup={handleOrderPopup} />} />
-            <Route path="/products" element={<CombineProducts handleOrderPopup={handleOrderPopup} />} />
-            <Route path="/blog" element={<Blogs handleOrderPopup={handleOrderPopup} />} />
-            <Route path="/about" element={<CombineCategory handleOrderPopup={handleOrderPopup} />} />
-            <Route path="/trending" element={<Trending />} />
-            <Route path="/best-selling" element={<BestSelling />} />
-            <Route path="/top-rated" element={<Products handleOrderPopup={handleOrderPopup} />} />
-            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-            <Route path="/login" element={<Login />} />
-          </Routes>
-          <Footer />
-          <CartModal open={orderPopup} onClose={handleOrderPopup} />
-        </Router>
-      </CartProvider>
+        <CartProvider>
+          <Router>
+            <Navbar handleOrderPopup={handleOrderPopup} />
+            <Routes>
+              {/* Public routes */}
+              <Route
+                path="/"
+                element={<Home handleOrderPopup={handleOrderPopup} />}
+              />
+              <Route
+                path="/products"
+                element={<CombineProducts handleOrderPopup={handleOrderPopup} />}
+              />
+              <Route
+                path="/blog"
+                element={<Blogs handleOrderPopup={handleOrderPopup} />}
+              />
+              <Route
+                path="/about"
+                element={<CombineCategory handleOrderPopup={handleOrderPopup} />}
+              />
+              <Route path="/trending" element={<Trending />} />
+              <Route path="/best-selling" element={<BestSelling />} />
+              <Route
+                path="/top-rated"
+                element={<Products handleOrderPopup={handleOrderPopup} />}
+              />
+              <Route path="/services" element={<Services />} />
+
+              {/* Admin-only */}
+              <Route
+                path="/admin"
+                element={
+                  <AdminRoute>
+                    <AdminDashboard />
+                  </AdminRoute>
+                }
+              />
+
+              {/* Auth */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/account" element={<UserAccount />} />
+            </Routes>
+            <Footer />
+            <CartModal open={orderPopup} onClose={handleOrderPopup} />
+          </Router>
+        </CartProvider>
       </ToastProvider>
     </div>
   );

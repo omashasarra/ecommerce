@@ -1,13 +1,14 @@
 import React from "react";
 import Button from "../Shared/Button";
-import api from "../../shared/api";
+import { userApi as api } from "../../shared/api";
+
 
 const resolveCategoryImage = (image) => {
   if (!image) return "";
   if (image.startsWith("blob:")) return image;
   if (/^https?:\/\//i.test(image)) return image;
   if (image.startsWith("/category/")) return image;
-  if (image.startsWith("/")) return image;                         // keep app assets
+  if (image.startsWith("/")) return image;                        
   if (image.includes("/")) return `/category/${image.split("/").pop()}`;
   return `/category/${image}`;
 };
